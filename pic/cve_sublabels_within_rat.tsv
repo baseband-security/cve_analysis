@@ -1,0 +1,107 @@
+RAT	Sublabel	Count	PctWithinRAT
+Unknown	Generic	98	100.0
+4G/LTE	NAS	21	29.2
+4G/LTE	Generic	11	15.3
+4G/LTE	RRC	7	9.7
+4G/LTE	SIB1	4	5.6
+4G/LTE	RLC	4	5.6
+4G/LTE	Security	3	4.2
+4G/LTE	MM Packet	2	2.8
+4G/LTE	SIB12	2	2.8
+4G/LTE	L1	2	2.8
+4G/LTE	EMM	2	2.8
+4G/LTE	Tracking Area / TLB	1	1.4
+4G/LTE	SIB	1	1.4
+4G/LTE	Carrier Aggregation	1	1.4
+4G/LTE	Downlink Data Indication	1	1.4
+4G/LTE	OSI Scheduling	1	1.4
+4G/LTE	DCCH	1	1.4
+4G/LTE	LwM2M	1	1.4
+4G/LTE	MIB	1	1.4
+4G/LTE	Mobility	1	1.4
+4G/LTE	SOR	1	1.4
+4G/LTE	PDCP	1	1.4
+4G/LTE	ROHC	1	1.4
+4G/LTE	Session Management	1	1.4
+4G/LTE	Uplink Scheduler	1	1.4
+IMS	IMS	20	30.3
+IMS	SIP Message	12	18.2
+IMS	VoLTE	7	10.6
+IMS	SDP	6	9.1
+IMS	Generic	3	4.5
+IMS	RCS	3	4.5
+IMS	FMTP	2	3.0
+IMS	IMS Call	2	3.0
+IMS	RTCP	1	1.5
+IMS	RTP	1	1.5
+IMS	Video Config	1	1.5
+IMS	Min-SE	1	1.5
+IMS	Status Line	1	1.5
+IMS	Via Header	1	1.5
+IMS	Multipart	1	1.5
+IMS	Session-Expires	1	1.5
+IMS	Retry-After	1	1.5
+IMS	SIP URI	1	1.5
+IMS	IMS SMS	1	1.5
+5G/NR	RRC	25	52.1
+5G/NR	Registration / MM	9	18.8
+5G/NR	Generic	7	14.6
+5G/NR	Bandwidth Part	1	2.1
+5G/NR	Beam Management	1	2.1
+5G/NR	SIB5	1	2.1
+5G/NR	Mobility	1	2.1
+5G/NR	RAR	1	2.1
+5G/NR	NR16	1	2.1
+5G/NR	NR17	1	2.1
+Upper Levels	DNS	8	20.0
+Upper Levels	TCP	6	15.0
+Upper Levels	IPv6	5	12.5
+Upper Levels	CoAP	4	10.0
+Upper Levels	UDP	3	7.5
+Upper Levels	IPv4	3	7.5
+Upper Levels	DTLS	2	5.0
+Upper Levels	AS Security	1	2.5
+Upper Levels	IGMPv2	1	2.5
+Upper Levels	IPv4/IPv6	1	2.5
+Upper Levels	HTTP	1	2.5
+Upper Levels	PPP	1	2.5
+Upper Levels	Checksum	1	2.5
+Upper Levels	Network RX	1	2.5
+Upper Levels	DPL	1	2.5
+Upper Levels	Network Interface	1	2.5
+Local	Generic	11	32.4
+Local	HLOS-Modem Isolation	4	11.8
+Local	Modem Interface Driver	3	8.8
+Local	DIAG	2	5.9
+Local	DSM Allocator	1	2.9
+Local	CFR	1	2.9
+Local	DMA	1	2.9
+Local	Filter Rule	1	2.9
+Local	WMI Command	1	2.9
+Local	QMI	1	2.9
+Local	WMI Interface	1	2.9
+Local	FTM	1	2.9
+Local	SMMU / Crypto Engine	1	2.9
+Local	Modem Stats	1	2.9
+Local	FDAL	1	2.9
+Local	EFS	1	2.9
+Local	Key Leakage	1	2.9
+Local	CCCI	1	2.9
+2G	Generic	7	36.8
+2G	RRM	4	21.1
+2G	RR	3	15.8
+2G	GPRS	3	15.8
+2G	Traffic Channel Neighbour List	1	5.3
+2G	OTASP	1	5.3
+SIM	SIM	7	43.8
+SIM	GSTK	3	18.8
+SIM	UIM	2	12.5
+SIM	APDU	2	12.5
+SIM	PKCS15	1	6.2
+SIM	USAT	1	6.2
+SMS	SMS Parsing	2	40.0
+SMS	SMS TP Layer	1	20.0
+SMS	SMS RP Layer	1	20.0
+SMS	RP Address	1	20.0
+3G	Call Control	1	50.0
+3G	Generic	1	50.0
