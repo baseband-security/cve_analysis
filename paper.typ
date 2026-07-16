@@ -5,14 +5,14 @@
   abstract: [
     We present an empirical analysis of publicly disclosed Common Vulnerabilities and Exposures (CVEs)
     affecting cellular baseband modem firmware across five chipset vendors: Qualcomm, Samsung (Exynos),
-    MediaTek, Unisoc, and Apple. A corpus of 334 CVEs spanning 2010 to 2026 was collected from the
+    MediaTek, Unisoc, and Apple. A corpus of 320 CVEs spanning 2010 to 2026 was collected from the
     National Vulnerability Database, enriched with manually curated protocol annotations, and classified
     by radio-access-technology subsystem and impact severity. The results show that 4G/LTE and 5G/NR
     subsystems account for the largest share of labelled vulnerabilities, that Remote Code Execution and
     memory-corruption-class bugs appear consistently across all vendors, and that disclosure volume
     accelerated sharply from 2022 onward driven by maturing modem security research tooling
     @firmwire_ndss2022 @lisowski_usenix2024 @overcoming_state @otabase and by concentrated vendor advisory cycles
-    @p0_exynos_2023 @samsung_psu @mediatek_psb. Approximately 31% of CVEs could not be assigned a
+    @p0_exynos_2023 @samsung_psu @mediatek_psb. Approximately 29.7% of CVEs could not be assigned a
     specific protocol label from public descriptions alone, highlighting a systemic transparency gap in
     vendor advisories.
   ],

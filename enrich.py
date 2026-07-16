@@ -503,8 +503,8 @@ def load_raw_data(json_files: dict) -> list:
                     if reclassified != 'DoS':
                         classified = reclassified
 
-                # if label == "Upper Levels":
-                #     print(all_atoms, cve_id, desc)
+                if classified == "RCE":
+                    print(all_atoms, cve_id, desc)
 
                 # non memory bugs
                 for excluded in ("CWE-327", "CWE-757", "CWE-326", "CWE-295", "CWE-331", "CWE-295", "CWE-285", "CWE-287"):

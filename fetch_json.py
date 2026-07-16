@@ -840,6 +840,7 @@ def fetch_and_parse(cve_id_or_url: str) -> str:
 
 
 import glob
+import sys
 
 all_cves = []
 
@@ -847,10 +848,14 @@ urls = []
 
 records = []
 
+if not len(sys.argv[1]) or not len(sys.argv[2]):
+    print(f"Usage: {sys.argv[0]} <vendor> <amount_of_pages_to_fetch>")
+    print(f"Example: python3 {sys.argv[0]} unisoc 3")
+
 import json
 
-for i in range(1,3):
-    urls.append("https://app.opencve.io/cve/?q=description%3Amodem+AND+vendor%3Aunisoc&page=" + str(i))
+for i in range(1,int(sys.argv[2])):
+    urls.append(f"https://app.opencve.io/cve/?q=description%3Amodem+AND+vendor%3{sys.argv[1]}&page=" + str(i))
 
 for url in urls:
     print(f"Fetching {url} …", file=sys.stderr)
