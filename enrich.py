@@ -38,12 +38,13 @@ SCHEMA_VERSION = "2.9"
 SOURCE_AUDIT_DATE = "2026-08-27"
 REPOSITORY_ROOT = Path(__file__).resolve().parent
 DEFAULT_TYPST = REPOSITORY_ROOT / "cve_table.typ"
+DEFAULT_INPUT_DIR = Path("fetched_json")
 DEFAULT_OUTPUT = Path("outputs")
-JSON_FILES = {
-    "Qualcomm": REPOSITORY_ROOT / "fetched_json/cve_qualcomm_clean.json",
-    "Samsung": REPOSITORY_ROOT / "fetched_json/cve_samsung_clean.json",
-    "MediaTek": REPOSITORY_ROOT / "fetched_json/cve_mediatek_clean.json",
-    "Unisoc": REPOSITORY_ROOT / "fetched_json/cve_unisoc_clean.json",
+JSON_FILENAMES = {
+    "Qualcomm": "cve_qualcomm_clean.json",
+    "Samsung": "cve_samsung_clean.json",
+    "MediaTek": "cve_mediatek_clean.json",
+    "Unisoc": "cve_unisoc_clean.json",
 }
 
 IMPACT_RCE = "RCE"
@@ -1618,8 +1619,17 @@ def plot_outputs(records: list[dict[str, Any]], output: Path) -> None:
     plt.close(fig)
 
 
-def run(typst_path: Path, output: Path, make_plots: bool = True) -> dict[str, Any]:
-    raw_records = load_json_records(JSON_FILES)
+def run(
+    input_dir: Path,
+    typst_path: Path,
+    output: Path,
+    make_plots: bool = True,
+) -> dict[str, Any]:
+    json_files = {
+        vendor: input_dir / filename
+        for vendor, filename in JSON_FILENAMES.items()
+    }
+    raw_records = load_json_records(json_files)
     typst_records = parse_typst_records(typst_path)
 
     # Preserve enrichment-only CVEs as in the original pipeline.
@@ -1676,8 +1686,11 @@ def run(typst_path: Path, output: Path, make_plots: bool = True) -> dict[str, An
             ),
         },
         "inputs": {
-            str(path.relative_to(REPOSITORY_ROOT)): {"sha256": sha256_file(path)}
-            for path in (*JSON_FILES.values(), typst_path)
+            **{
+                f"fetched_json/{path.name}": {"sha256": sha256_file(path)}
+                for path in json_files.values()
+            },
+            "cve_table.typ": {"sha256": sha256_file(typst_path)},
         },
         "counts": {
             "input_unique_cves": len(raw_records),
@@ -1708,12 +1721,18 @@ def run(typst_path: Path, output: Path, make_plots: bool = True) -> dict[str, An
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--input-dir",
+        type=Path,
+        default=DEFAULT_INPUT_DIR,
+        help="directory containing freshly acquired cve_*_clean.json files",
+    )
     parser.add_argument("--typst", type=Path, default=DEFAULT_TYPST)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--no-plots", action="store_true")
     args = parser.parse_args()
 
-    summary = run(args.typst, args.output, make_plots=not args.no_plots)
+    summary = run(args.input_dir, args.typst, args.output, make_plots=not args.no_plots)
     print(f"Input unique CVEs: {summary['input_unique_cves']}")
     print(f"Included memory-safety CVEs: {summary['included_memory_safety_cves']}")
     print(f"Excluded: {summary['excluded_non_memory_or_insufficient_evidence']}")

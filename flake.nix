@@ -45,21 +45,38 @@
               exec python ${self}/fetch_json.py "''${source_args[@]}" "$@"
             '';
           };
+          pipeline = pkgs.writeShellApplication {
+            name = "baseband-cve-pipeline";
+            runtimeInputs = [ python ];
+            text = ''
+              fetched_dir="''${BASEBAND_CVE_FETCH_DIR:-$PWD/fetched_json}"
+              python ${self}/fetch_json.py \
+                --cve-list-dir ${cvelistV5} \
+                --merge-dir ${self}/no-checked-in-json \
+                --output-dir "$fetched_dir" \
+                --offline
+              exec python ${self}/enrich.py --input-dir "$fetched_dir" "$@"
+            '';
+          };
         in
-        { inherit pkgs python enrich verify fetch; };
+        { inherit pkgs python enrich verify fetch pipeline; };
     in
     {
       packages = forAllSystems (system:
         let p = packagesFor system;
         in {
-          default = p.enrich;
-          inherit (p) enrich verify fetch;
+          default = p.pipeline;
+          inherit (p) pipeline enrich verify fetch;
         });
 
       apps = forAllSystems (system: {
         default = {
           type = "app";
-          program = "${self.packages.${system}.enrich}/bin/baseband-cve-enrich";
+          program = "${self.packages.${system}.pipeline}/bin/baseband-cve-pipeline";
+        };
+        pipeline = {
+          type = "app";
+          program = "${self.packages.${system}.pipeline}/bin/baseband-cve-pipeline";
         };
         enrich = {
           type = "app";
@@ -96,9 +113,17 @@
             export MPLCONFIGDIR="$TMPDIR/matplotlib"
             test -d ${cvelistV5}/cves
             cd ${self}
-            python -m unittest -v test_fetch_json.py
-            python enrich.py --output "$TMPDIR/generated"
-            python verify_outputs.py "$TMPDIR/generated"
+            python fetch_json.py \
+              --cve-list-dir ${cvelistV5} \
+              --merge-dir "$TMPDIR/empty-merge" \
+              --output-dir "$TMPDIR/fetched_json" \
+              --offline
+            python enrich.py \
+              --input-dir "$TMPDIR/fetched_json" \
+              --output "$TMPDIR/generated"
+            python verify_outputs.py \
+              "$TMPDIR/generated" \
+              --input-dir "$TMPDIR/fetched_json"
             touch "$out"
           '';
         });

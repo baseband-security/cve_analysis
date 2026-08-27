@@ -116,7 +116,7 @@ VENDOR_PATTERNS = {
 # obvious Wi-Fi/GPU/audio CVEs from the same silicon vendors.
 BASEBAND_PATTERNS = (
     ("baseband", re.compile(r"\bbase[ -]?band\b", re.I)),
-    ("modem", re.compile(r"\bmodem\b", re.I)),
+    ("modem", re.compile(r"\bmodems?\b", re.I)),
     ("cellular", re.compile(r"\bcellular\b|\bmobile station\b", re.I)),
     ("3gpp", re.compile(r"\b3gpp\b", re.I)),
     ("radio-protocol", re.compile(

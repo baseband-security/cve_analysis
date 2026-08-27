@@ -68,6 +68,12 @@ def main() -> None:
         action="store_true",
         help="do not require PNG figures (for enrich.py --no-plots runs)",
     )
+    parser.add_argument(
+        "--input-dir",
+        type=Path,
+        default=Path("fetched_json"),
+        help="directory containing the acquisition JSON used by enrich.py",
+    )
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parent
@@ -198,7 +204,11 @@ def main() -> None:
     assert all(manifest["validation"].values()), "manifest contains a failed check"
 
     for relative, metadata in manifest["inputs"].items():
-        input_path = root / relative
+        input_path = (
+            args.input_dir.resolve() / Path(relative).name
+            if relative.startswith("fetched_json/")
+            else root / relative
+        )
         assert input_path.is_file(), f"missing manifest input: {input_path}"
         assert sha256(input_path) == metadata["sha256"], f"input hash mismatch: {relative}"
     assert sha256(root / "enrich.py") == manifest["implementation"]["enrich.py"]["sha256"]

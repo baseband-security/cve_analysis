@@ -2,6 +2,8 @@
 .direnv/
 .cache/
 __pycache__/
+fetched_json/
+outputs/
 regenerated/
 result
 result-*
