@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify a generated schema-2.9 baseband CVE artifact directory."""
+"""Verify a generated schema-3.0 baseband CVE artifact directory."""
 
 from __future__ import annotations
 
@@ -104,9 +104,9 @@ def main() -> None:
     csv_ids = [record["cve_id"] for record in csv_records]
     excluded_ids = [record["cve_id"] for record in excluded]
 
-    assert summary["schema_version"] == manifest["schema_version"] == "2.9"
-    assert source_audit["schema_version"] == "2.9"
-    assert manifest["analysis_release"] == "evidence-aware-taxonomy-v2.9"
+    assert summary["schema_version"] == manifest["schema_version"] == "3.0"
+    assert source_audit["schema_version"] == "3.0"
+    assert manifest["analysis_release"] == "evidence-aware-taxonomy-v3.0"
     assert summary["input_unique_cves"] == 622
     assert len(records) == len(csv_records) == 590
     assert len(excluded) == 32
@@ -147,32 +147,32 @@ def main() -> None:
         for record in records
         if record["impact"] == "RCE"
     )
-    assert Counter(record["evidence"]["level"] for record in records) == Counter({
-        "E1": 348,
-        "E2": 217,
-        "E3": 14,
-        "E4": 1,
-        "E5": 10,
+    assert Counter(record["evidence"]["band"] for record in records) == Counter({
+        "advisory-only": 348,
+        "technical-characterization": 231,
+        "exploitation-evidence": 11,
     })
     assert all(
-        record["evidence"]["level"]
+        record["evidence"]["band"]
         == (
-            "E5"
+            "exploitation-evidence"
             if record["evidence"]["arbitrary_code_execution"]
-            else "E4"
-            if record["evidence"]["control_flow_redirection"]
-            else "E3"
+            or record["evidence"]["control_flow_redirection"]
+            else "technical-characterization"
             if record["evidence"]["primitive_characterized"]
-            else "E2"
-            if record["evidence"]["reproduced_failure"]
+            or record["evidence"]["reproduced_failure"]
             or record["evidence"]["component_identified"]
-            else "E1"
+            else "advisory-only"
         )
         for record in records
     )
+    assert all(isinstance(record["affected_chipsets"], list) for record in records)
+    assert sum(bool(record["affected_chipsets"]) for record in records) > 500
+    assert {"root_cause", "affected_chipsets", "evidence_band"}.issubset(csv_records[0])
     pncd = next(record for record in records if record["cve_id"] == "CVE-2022-21744")
     assert pncd["impact"] == "RCE"
-    assert pncd["evidence"]["level"] == "E5"
+    assert pncd["evidence"]["band"] == "exploitation-evidence"
+    assert "MT6873" in pncd["affected_chipsets"]
     assert any(
         source["url"] == "https://labs.taszk.io/articles/post/full_chain_bb_part2/"
         for source in pncd["sources"]

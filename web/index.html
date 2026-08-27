@@ -3,17 +3,17 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Explore the generated evidence-aware baseband CVE dataset.">
-    <title>BandScope — Baseband CVE Explorer</title>
+    <meta name="description" content="Explore generated baseband memory-safety CVEs by year, vendor, chipset, root cause, and impact.">
+    <title>Baseband Memory Safety Bugs Overview</title>
     <link rel="stylesheet" href="/styles.css">
     <script src="/app.js" defer></script>
   </head>
   <body>
     <div class="noise" aria-hidden="true"></div>
     <header class="topbar">
-      <a class="brand" href="#top" aria-label="BandScope home">
+      <a class="brand" href="#top" aria-label="Baseband Memory Safety Bugs Overview home">
         <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span>BAND<span>SCOPE</span></span>
+        <span>BASEBAND MEMORY SAFETY BUGS OVERVIEW</span>
       </a>
       <nav aria-label="Primary navigation">
         <a href="#overview">Overview</a>
@@ -26,8 +26,8 @@
     <main id="top">
       <section class="hero" id="overview">
         <div class="hero-copy">
-          <p class="eyebrow">Evidence-aware vulnerability intelligence</p>
-          <h1>The public record of<br><em>baseband memory safety.</em></h1>
+          <p class="eyebrow">Baseband Memory Safety Bugs Overview</p>
+          <h1>Baseband memory<br><em>safety bugs overview.</em></h1>
           <p class="hero-lede">Inspect every retained CVE, trace its evidence, and compare attack surfaces without mistaking disclosure counts for vulnerability rates.</p>
           <div class="hero-actions">
             <a class="button primary" href="#dataset">Explore the dataset <span>↘</span></a>
@@ -78,7 +78,7 @@
           </article>
 
           <article class="panel evidence-panel">
-            <div class="panel-heading"><div><span>Evidence ladder</span><h3>Public technical depth</h3></div><button class="text-button" id="evidenceHelp" type="button">How to read ↗</button></div>
+            <div class="panel-heading"><div><span>Evidence depth</span><h3>What the public record shows</h3></div><button class="text-button" id="evidenceHelp" type="button">How to read ↗</button></div>
             <div id="evidenceLadder" class="evidence-ladder"></div>
           </article>
         </div>
@@ -104,8 +104,9 @@
             <kbd>/</kbd>
           </label>
           <label><span>Vendor</span><select id="vendorFilter"><option value="">All vendors</option></select></label>
+          <label><span>Year</span><select id="yearFilter"><option value="">All years</option></select></label>
+          <label><span>Chipset</span><input id="chipsetFilter" type="search" placeholder="e.g. MT6873" autocomplete="off"></label>
           <label><span>Impact</span><select id="impactFilter"><option value="">All impacts</option></select></label>
-          <label><span>Evidence</span><select id="evidenceFilter"><option value="">All levels</option></select></label>
           <label><span>Scope</span><select id="scopeFilter"><option value="">All scopes</option></select></label>
           <button id="clearFilters" class="clear-button" type="button">Clear</button>
         </div>
@@ -117,9 +118,8 @@
               <th><button data-sort="vendor">Vendor <span>↕</span></button></th>
               <th><button data-sort="year">Year <span>↕</span></button></th>
               <th><button data-sort="impact">Impact <span>↕</span></button></th>
-              <th><button data-sort="bug_family">Bug family <span>↕</span></button></th>
-              <th><button data-sort="primary_scope">Primary scope <span>↕</span></button></th>
-              <th><button data-sort="evidence_level">Evidence <span>↕</span></button></th>
+              <th><button data-sort="root_cause">Root cause <span>↕</span></button></th>
+              <th><button data-sort="affected_chipsets">Affected chipsets <span>↕</span></button></th>
               <th><span class="sr-only">Open details</span></th>
             </tr></thead>
             <tbody id="recordRows"></tbody>
@@ -136,14 +136,14 @@
       <section class="methodology section-shell" id="methodology">
         <div class="section-heading">
           <div><p class="eyebrow">Reading the evidence</p><h2>Impact and evidence<br>are separate axes.</h2></div>
-          <p>An E1 record may still be exploitable; it simply has less public technical detail. RCE is retained only when public evidence confirms compromise or control-flow execution.</p>
+          <p>Row color indicates how much technical evidence is public, not severity. RCE is retained only when public evidence confirms compromise or control-flow execution.</p>
         </div>
         <div id="methodCards" class="method-grid"></div>
       </section>
     </main>
 
     <footer>
-      <a class="brand" href="#top"><span class="brand-mark"><i></i><i></i><i></i><i></i></span><span>BAND<span>SCOPE</span></span></a>
+      <a class="brand" href="#top"><span class="brand-mark"><i></i><i></i><i></i><i></i></span><span>BASEBAND MEMORY SAFETY BUGS OVERVIEW</span></a>
       <p>Generated locally from the pinned CVE List V5 artifact. Counts measure disclosures, not product security.</p>
       <a href="#top">Back to top ↑</a>
     </footer>

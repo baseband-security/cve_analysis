@@ -8,19 +8,26 @@ const DATA_FILES = {
   manifest: "/data/dataset_manifest.json",
 };
 
-const evidenceDescriptions = {
-  E1: "A vendor or CVE record states the weakness or potential outcome.",
-  E2: "Public evidence reproduces the failure or identifies a detailed root cause.",
-  E3: "Public evidence characterizes an attacker-relevant memory primitive.",
-  E4: "Public evidence demonstrates control-flow redirection.",
-  E5: "Public evidence demonstrates or explicitly confirms arbitrary code execution.",
+const evidenceBands = {
+  "advisory-only": {
+    label: "Advisory only",
+    description: "The public record states the weakness or outcome, but provides no deeper technical analysis.",
+  },
+  "technical-characterization": {
+    label: "Technical characterization",
+    description: "Public material reproduces the failure, explains the root cause, or characterizes the memory primitive.",
+  },
+  "exploitation-evidence": {
+    label: "Exploitation evidence",
+    description: "Public material demonstrates control-flow redirection or confirms code execution.",
+  },
 };
 
 const state = {
   data: null,
   view: "included",
   query: "",
-  filters: { vendor: "", impact: "", evidence: "", scope: "" },
+  filters: { vendor: "", year: "", chipset: "", impact: "", scope: "" },
   sort: { field: "date_published", direction: -1 },
   page: 1,
   pageSize: 25,
@@ -37,6 +44,22 @@ function impactClass(impact) {
   if (impact === "Write Primitive") return "badge-write";
   if (impact === "Excluded") return "badge-excluded";
   return "badge-dos";
+}
+
+function evidenceClass(record) {
+  const band = record.evidence?.band;
+  if (band === "exploitation-evidence") return "evidence-exploitation";
+  if (band === "technical-characterization") return "evidence-technical";
+  if (band === "advisory-only") return "evidence-advisory";
+  return "evidence-none";
+}
+
+function rootCause(record) {
+  return record.manual_enrichment?.root_cause || record.cwe || record.bug_class || record.excluded_reason || "Not publicly specified";
+}
+
+function chipsets(record) {
+  return record.affected_chipsets?.length ? record.affected_chipsets : [];
 }
 
 function optionList(select, values) {
@@ -64,7 +87,7 @@ async function loadData() {
     ...byId.get(audit.cve_id),
     ...audit,
     impact: audit.final_impact,
-    evidence: { level: audit.evidence_level, summary: audit.reason },
+    evidence: { band: audit.evidence_band, summary: audit.reason },
     primary_scope: byId.get(audit.cve_id)?.primary_scope || "Unknown",
     bug_family: byId.get(audit.cve_id)?.bug_family || "—",
     record_type: "audit",
@@ -73,7 +96,7 @@ async function loadData() {
   data.excluded = data.excluded.map((record) => ({
     ...record,
     impact: "Excluded",
-    evidence: { level: "—", summary: record.excluded_reason },
+    evidence: { band: "", summary: record.excluded_reason },
     primary_scope: "—",
     bug_family: "—",
     record_type: "excluded",
@@ -125,11 +148,11 @@ function renderVendors() {
 }
 
 function renderEvidence() {
-  const levels = Object.entries(state.data.summary.evidence_level);
-  $("#evidenceLadder").innerHTML = levels.map(([level, count]) => `<div class="evidence-step" title="${escapeHtml(evidenceDescriptions[level])}"><b>${level}</b><span>${count} records</span></div>`).join("");
-  const rows = levels.map(([level]) => `<div class="dialog-evidence-row"><b>${level}</b><p>${escapeHtml(evidenceDescriptions[level])}</p></div>`).join("");
+  const bands = Object.entries(state.data.summary.evidence_band);
+  $("#evidenceLadder").innerHTML = bands.map(([band, count]) => `<div class="evidence-step ${evidenceClass({ evidence: { band } })}" title="${escapeHtml(evidenceBands[band].description)}"><b>${escapeHtml(evidenceBands[band].label)}</b><span>${count} records</span></div>`).join("");
+  const rows = bands.map(([band]) => `<div class="dialog-evidence-row ${evidenceClass({ evidence: { band } })}"><i></i><p><b>${escapeHtml(evidenceBands[band].label)}</b><br>${escapeHtml(evidenceBands[band].description)}</p></div>`).join("");
   $("#dialogEvidence").innerHTML = rows;
-  $("#methodCards").innerHTML = levels.map(([level, count]) => `<article class="method-card"><strong>${level}</strong><h3>${count.toLocaleString()} records</h3><p>${escapeHtml(evidenceDescriptions[level])}</p></article>`).join("");
+  $("#methodCards").innerHTML = bands.map(([band, count]) => `<article class="method-card ${evidenceClass({ evidence: { band } })}"><strong>${escapeHtml(evidenceBands[band].label)}</strong><h3>${count.toLocaleString()} records</h3><p>${escapeHtml(evidenceBands[band].description)}</p></article>`).join("");
 }
 
 function currentDataset() {
@@ -142,7 +165,7 @@ function searchableText(record) {
   return [record.cve_id, record.vendor, record.description, record.cwe, record.impact,
     record.bug_class, record.bug_family, record.primary_scope, record.reachability,
     record.evidence?.summary, record.manual_enrichment?.protocol,
-    record.manual_enrichment?.root_cause, ...(record.protocols || []), ...(record.rats || [])]
+    rootCause(record), ...chipsets(record), ...(record.protocols || []), ...(record.rats || [])]
     .filter(Boolean).join(" ").toLowerCase();
 }
 
@@ -151,15 +174,16 @@ function filteredRecords() {
   const rows = currentDataset().filter((record) => {
     if (query && !searchableText(record).includes(query)) return false;
     if (state.filters.vendor && record.vendor !== state.filters.vendor) return false;
+    if (state.filters.year && String(record.year || record.date_published?.slice(0, 4)) !== state.filters.year) return false;
+    if (state.filters.chipset && !chipsets(record).join(" ").toLowerCase().includes(state.filters.chipset.toLowerCase())) return false;
     if (state.filters.impact && record.impact !== state.filters.impact) return false;
-    if (state.filters.evidence && record.evidence?.level !== state.filters.evidence) return false;
     if (state.filters.scope && record.primary_scope !== state.filters.scope) return false;
     return true;
   });
   const { field, direction } = state.sort;
   return rows.sort((a, b) => {
-    const av = field === "evidence_level" ? a.evidence?.level : a[field];
-    const bv = field === "evidence_level" ? b.evidence?.level : b[field];
+    const av = field === "root_cause" ? rootCause(a) : field === "affected_chipsets" ? chipsets(a).join(", ") : a[field];
+    const bv = field === "root_cause" ? rootCause(b) : field === "affected_chipsets" ? chipsets(b).join(", ") : b[field];
     return String(av ?? "").localeCompare(String(bv ?? ""), undefined, { numeric: true }) * direction;
   });
 }
@@ -171,14 +195,13 @@ function renderTable() {
   const start = (state.page - 1) * state.pageSize;
   const visible = rows.slice(start, start + state.pageSize);
   $("#resultSummary").textContent = `${rows.length.toLocaleString()} of ${currentDataset().length.toLocaleString()} records`;
-  $("#recordRows").innerHTML = visible.map((record) => `<tr data-cve="${escapeHtml(record.cve_id)}" data-type="${record.record_type}" tabindex="0">
+  $("#recordRows").innerHTML = visible.map((record) => `<tr class="${evidenceClass(record)}" data-cve="${escapeHtml(record.cve_id)}" data-type="${record.record_type}" tabindex="0">
     <td class="cve-cell">${escapeHtml(record.cve_id)}</td>
     <td>${escapeHtml(record.vendor || "—")}</td>
     <td class="muted-cell">${escapeHtml(record.year || record.date_published?.slice(0, 4) || "—")}</td>
     <td><span class="badge ${impactClass(record.impact)}">${escapeHtml(record.impact)}</span></td>
-    <td>${escapeHtml(record.bug_family || "—")}</td>
-    <td>${escapeHtml(record.primary_scope || "—")}</td>
-    <td><span class="badge evidence-badge">${escapeHtml(record.evidence?.level || "—")}</span></td>
+    <td class="root-cause-cell" title="${escapeHtml(rootCause(record))}">${escapeHtml(rootCause(record))}</td>
+    <td class="chipset-cell" title="${escapeHtml(chipsets(record).join(", "))}">${escapeHtml(chipsets(record).join(", ") || "Not publicly specified")}</td>
     <td class="row-arrow">↗</td>
   </tr>`).join("");
   $("#emptyState").hidden = visible.length !== 0;
@@ -205,6 +228,7 @@ function openDrawer(record, updateHash = true) {
     ["Primary scope", record.primary_scope], ["RAT", (record.rats || []).join(", ")],
     ["Protocols", (record.protocols || []).join(", ")], ["Reachability", record.reachability],
     ["Primitive control", record.primitive_control], ["Patch ID", record.patch?.identifier],
+    ["Affected chipsets", chipsets(record).join(", ") || "Not publicly specified"],
   ].filter(([, value]) => value && value !== "—");
   const flags = evidence.arbitrary_code_execution !== undefined ? [
     ["Reproduced failure", evidence.reproduced_failure],
@@ -216,11 +240,12 @@ function openDrawer(record, updateHash = true) {
   $("#drawerContent").innerHTML = `
     <p class="drawer-kicker">${escapeHtml(record.record_type === "audit" ? "Legacy RCE decision" : "Artifact record")}</p>
     <h2 id="drawerTitle">${escapeHtml(record.cve_id)}</h2>
-    <div class="drawer-badges"><span class="badge ${impactClass(record.impact)}">${escapeHtml(record.impact || "—")}</span><span class="badge evidence-badge">${escapeHtml(evidence.level || "—")}</span></div>
+    <div class="drawer-badges"><span class="badge ${impactClass(record.impact)}">${escapeHtml(record.impact || "—")}</span></div>
     <div class="drawer-summary"><b>${record.record_type === "excluded" ? "Exclusion rationale" : record.record_type === "audit" ? escapeHtml(record.decision) : "Evidence summary"}</b><p>${escapeHtml(evidence.summary || record.description || "No public summary encoded.")}</p></div>
+    ${evidenceBands[evidence.band] ? `<div class="evidence-meaning ${evidenceClass(record)}"><b>${escapeHtml(evidenceBands[evidence.band].label)}</b><p>${escapeHtml(evidenceBands[evidence.band].description)}</p></div>` : ""}
     ${record.description ? `<section class="drawer-section"><h3>Canonical description</h3><p>${escapeHtml(record.description)}</p></section>` : ""}
     <section class="drawer-section"><h3>Classification</h3><dl class="definition-grid">${definitions.map(([term, value]) => `<div><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl></section>
-    ${record.manual_enrichment?.root_cause ? `<section class="drawer-section"><h3>Reviewed root cause</h3><p>${escapeHtml(record.manual_enrichment.root_cause)}</p></section>` : ""}
+    <section class="drawer-section"><h3>Root cause</h3><p>${escapeHtml(rootCause(record))}</p></section>
     ${flags.length ? `<section class="drawer-section"><h3>Evidence flags</h3><dl class="definition-grid">${flags.map(([term, value]) => `<div><dt>${escapeHtml(term)}</dt><dd>${value ? "Yes" : "No"}</dd></div>`).join("")}</dl></section>` : ""}
     <section class="drawer-section"><h3>Public sources · ${sources.length}</h3><div class="source-list">${sources.map((source) => `<a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer"><span>${escapeHtml(source.title)}</span><span>↗</span></a>`).join("") || "<p>No reviewed source attached.</p>"}</div></section>`;
   $("#drawerBackdrop").hidden = false;
@@ -241,18 +266,18 @@ function closeDrawer(clearHash = true) {
 
 function resetFilters() {
   state.query = "";
-  state.filters = { vendor: "", impact: "", evidence: "", scope: "" };
+  state.filters = { vendor: "", year: "", chipset: "", impact: "", scope: "" };
   $("#searchInput").value = "";
-  for (const id of ["vendorFilter", "impactFilter", "evidenceFilter", "scopeFilter"]) $(`#${id}`).value = "";
+  for (const id of ["vendorFilter", "yearFilter", "chipsetFilter", "impactFilter", "scopeFilter"]) $(`#${id}`).value = "";
   state.page = 1;
   renderTable();
 }
 
 function exportCsv() {
   const rows = filteredRecords();
-  const fields = ["cve_id", "vendor", "date_published", "impact", "bug_class", "bug_family", "primary_scope", "evidence_level"];
+  const fields = ["cve_id", "vendor", "date_published", "impact", "bug_class", "bug_family", "primary_scope", "root_cause", "affected_chipsets", "evidence_band"];
   const quote = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
-  const csv = [fields.join(","), ...rows.map((record) => fields.map((field) => quote(field === "evidence_level" ? record.evidence?.level : record[field])).join(","))].join("\n");
+  const csv = [fields.join(","), ...rows.map((record) => fields.map((field) => quote(field === "root_cause" ? rootCause(record) : field === "affected_chipsets" ? chipsets(record).join("; ") : field === "evidence_band" ? record.evidence?.band : record[field])).join(","))].join("\n");
   const link = document.createElement("a");
   link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
   link.download = `baseband-cves-${state.view}-filtered.csv`;
@@ -263,8 +288,8 @@ function exportCsv() {
 
 function bindEvents() {
   $("#searchInput").addEventListener("input", (event) => { state.query = event.target.value; state.page = 1; renderTable(); });
-  for (const [id, key] of [["vendorFilter", "vendor"], ["impactFilter", "impact"], ["evidenceFilter", "evidence"], ["scopeFilter", "scope"]]) {
-    $(`#${id}`).addEventListener("change", (event) => { state.filters[key] = event.target.value; state.page = 1; renderTable(); });
+  for (const [id, key] of [["vendorFilter", "vendor"], ["yearFilter", "year"], ["chipsetFilter", "chipset"], ["impactFilter", "impact"], ["scopeFilter", "scope"]]) {
+    $(`#${id}`).addEventListener(id === "chipsetFilter" ? "input" : "change", (event) => { state.filters[key] = event.target.value; state.page = 1; renderTable(); });
   }
   $("#clearFilters").addEventListener("click", resetFilters);
   $("#previousPage").addEventListener("click", () => { state.page -= 1; renderTable(); });
@@ -302,8 +327,8 @@ async function init() {
     renderVendors();
     renderEvidence();
     optionList($("#vendorFilter"), Object.keys(state.data.summary.vendor).sort());
+    optionList($("#yearFilter"), Object.keys(state.data.summary.year).sort((a, b) => b - a));
     optionList($("#impactFilter"), ["RCE", "Write Primitive", "DoS", "Excluded"]);
-    optionList($("#evidenceFilter"), ["E1", "E2", "E3", "E4", "E5"]);
     optionList($("#scopeFilter"), Object.keys(state.data.summary.primary_scope));
     bindEvents();
     renderTable();

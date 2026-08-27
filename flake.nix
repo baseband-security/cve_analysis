@@ -74,17 +74,17 @@
               fetched_dir="''${BASEBAND_CVE_FETCH_DIR:-$PWD/fetched_json}"
               output_dir="''${BASEBAND_CVE_OUTPUT_DIR:-$PWD/outputs}"
               export MPLCONFIGDIR="''${MPLCONFIGDIR:-$PWD/.cache/matplotlib}"
-              echo "[BandScope 1/3] Acquiring vendor JSON from the pinned CVE List V5 snapshot"
+              echo "[Baseband overview 1/3] Acquiring vendor JSON from the pinned CVE List V5 snapshot"
               python ${self}/fetch_json.py \
                 --cve-list-dir ${cvelistV5} \
                 --merge-dir ${self}/no-checked-in-json \
                 --output-dir "$fetched_dir" \
                 --offline
-              echo "[BandScope 2/3] Enriching, plotting, and validating the dataset"
+              echo "[Baseband overview 2/3] Enriching, plotting, and validating the dataset"
               python ${self}/enrich.py \
                 --input-dir "$fetched_dir" \
                 --output "$output_dir"
-              echo "[BandScope 3/3] Starting the local explorer"
+              echo "[Baseband overview 3/3] Starting the local explorer"
               exec python ${self}/serve.py --data-dir "$output_dir" "$@"
             '';
           };
@@ -184,7 +184,7 @@
                     with urllib.request.urlopen("http://127.0.0.1:8123/data/classification_summary.json") as response:
                         assert json.load(response)["included_memory_safety_cves"] == 590
                     with urllib.request.urlopen("http://127.0.0.1:8123/") as response:
-                        assert b"BandScope" in response.read()
+                        assert b"Baseband Memory Safety Bugs Overview" in response.read()
                     break
                 except OSError:
                     if attempt == 19:

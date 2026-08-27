@@ -1,6 +1,6 @@
 # Evidence-Aware Baseband CVE Dataset
 
-This repository contains the source-only, schema-2.9 reproduction pipeline. Its
+This repository contains the source-only, schema-3.0 reproduction pipeline. Its
 Nix flake pins both the execution environment and the official CVE List V5 Git
 revision. No acquired JSON or generated datasets are stored in Git.
 
@@ -46,7 +46,7 @@ build directory.
 
 ## Explore in the browser
 
-Generate the artifact and start the bundled BandScope frontend with:
+Generate the artifact and start the bundled Baseband Memory Safety Bugs Overview frontend with:
 
 ```bash
 nix --extra-experimental-features 'nix-command flakes' run .#site
@@ -68,7 +68,7 @@ files.
 ├── enrich.py          # classification, exports, audits, and figures
 ├── verify_outputs.py  # independent integrity and frozen-result checks
 ├── serve.py           # local static/data server
-├── web/               # BandScope artifact explorer
+├── web/               # Baseband memory-safety artifact explorer
 ├── cve_table.typ      # manually reviewed enrichment annotations
 └── README.md
 ```
@@ -87,13 +87,14 @@ retained impacts are:
 - 194 write primitive; and
 - 385 denial of service.
 
-CVE-2022-21744 is classified as E5/RCE. Its root-cause source is the TASZK PNCD
+CVE-2022-21744 is classified as RCE with public exploitation evidence. Its root-cause source is the TASZK PNCD
 post, and its execution evidence is TASZK's Full Chain Baseband Exploits, Part 2.
 
-Evidence levels are E1 (vendor/CVE statement), E2 (reproduction or detailed
-root cause), E3 (attacker-relevant memory primitive), E4 (control-flow
-redirection), and E5 (arbitrary code execution demonstrated or explicitly
-confirmed).
+Evidence depth uses three bands: advisory only; technical characterization
+(reproduction, detailed root cause, or memory-primitive analysis); and
+exploitation evidence (control-flow redirection or confirmed code execution).
+The website communicates these bands with row colors and plain-language
+descriptions, while retaining the underlying evidence flags in the JSON.
 
 The acquisition phase intentionally uses only the locked CVE repository during
 default reproduction. Live Android and vendor-site crawling remains available

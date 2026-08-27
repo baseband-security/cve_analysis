@@ -34,7 +34,7 @@ from typing import Any, Iterable
 from urllib.parse import urlparse
 
 
-SCHEMA_VERSION = "2.9"
+SCHEMA_VERSION = "3.0"
 SOURCE_AUDIT_DATE = "2026-08-27"
 REPOSITORY_ROOT = Path(__file__).resolve().parent
 DEFAULT_TYPST = REPOSITORY_ROOT / "cve_table.typ"
@@ -52,15 +52,18 @@ IMPACT_WRITE = "Write Primitive"
 IMPACT_DOS = "DoS"
 IMPACT_ORDER = (IMPACT_RCE, IMPACT_WRITE, IMPACT_DOS)
 
-# Evidence levels describe how much is publicly known, not how critical the bug
-# is.  Impact and exploitability remain represented by their dedicated fields.
-EVIDENCE_LEVELS = ("E1", "E2", "E3", "E4", "E5")
-EVIDENCE_LEVEL_SUMMARIES = {
-    "E1": "A vendor or CVE record states the weakness or potential outcome.",
-    "E2": "Public evidence reproduces the failure or identifies a function/message-level root cause.",
-    "E3": "Public evidence characterizes an attacker-relevant memory primitive.",
-    "E4": "Public evidence demonstrates control-flow redirection.",
-    "E5": "Public evidence demonstrates or explicitly confirms arbitrary code execution under stated attack conditions.",
+# Evidence bands describe how much is publicly known, not how critical the bug
+# is. The two former middle tiers and two former upper tiers are intentionally
+# merged; the individual boolean observations remain available for analysis.
+EVIDENCE_BANDS = (
+    "advisory-only",
+    "technical-characterization",
+    "exploitation-evidence",
+)
+EVIDENCE_BAND_SUMMARIES = {
+    "advisory-only": "A vendor or CVE record states the weakness or potential outcome, without deeper public technical analysis.",
+    "technical-characterization": "Public evidence reproduces the failure, identifies a detailed root cause, or characterizes an attacker-relevant memory primitive.",
+    "exploitation-evidence": "Public evidence demonstrates control-flow redirection or explicitly confirms arbitrary code execution under stated attack conditions.",
 }
 
 SCOPE_CELLULAR = "Cellular Control Plane"
@@ -266,9 +269,8 @@ CURATED_ADVISORIES: dict[str, list[dict[str, str]]] = {
 
 # RCE means public confirmation of baseband compromise or demonstrated control-flow
 # redirection.  "Could lead to RCE", a high CVSS score, or an OOB write alone is not
-# sufficient. E4 requires demonstrated control-flow redirection; E5 requires
-# demonstrated or explicitly confirmed arbitrary code execution under stated
-# conditions.
+# sufficient. Exploitation evidence requires demonstrated control-flow
+# redirection or explicitly confirmed arbitrary code execution under stated conditions.
 VERIFIED_RCE: dict[str, dict[str, Any]] = {
     "CVE-2010-3832": {
         "reason": "The WOOT paper injects and executes arbitrary baseband code via the TMSI overflow.",
@@ -702,6 +704,22 @@ def extract_description(record: dict[str, Any]) -> str:
     return ""
 
 
+def extract_affected_chipsets(record: dict[str, Any]) -> list[str]:
+    """Return normalized product/chipset names from CVE List V5 affected data."""
+    values: list[str] = []
+    placeholders = {"", "*", "n/a", "na", "unknown", "unspecified", "none"}
+    for container in containers(record):
+        for affected in container.get("affected", []) or []:
+            if not isinstance(affected, dict):
+                continue
+            product = clean(affected.get("product"))
+            for value in re.split(r"[,;\n]+|\s*/\s*", product):
+                normalized = clean(value)
+                if normalized.lower() not in placeholders:
+                    values.append(normalized)
+    return list(dict.fromkeys(values))
+
+
 def load_json_records(paths: dict[str, Path]) -> dict[str, RawRecord]:
     records: dict[str, RawRecord] = {}
     for vendor, path in paths.items():
@@ -789,7 +807,7 @@ def reference_candidates(cve_id: str, urls: list[str]) -> list[dict[str, Any]]:
     and at least one URL whose path names a different CVE.  URL structure can
     identify obvious conflicts, but it cannot prove page contents.  Therefore
     every inherited URL is quarantined here and is never used to justify an
-    impact or evidence level.
+    impact or evidence depth.
     """
     candidates: list[dict[str, Any]] = []
     for url in dict.fromkeys(urls):
@@ -965,23 +983,19 @@ def root_detail(typst: dict[str, Any], bug_class: str, protocols: list[str]) -> 
     return "absent"
 
 
-def classify_evidence_level(
+def classify_evidence_band(
     component_identified: bool,
     reproduced_failure: bool,
     primitive_characterized: bool,
     control_flow_redirection: bool,
     arbitrary_code_execution: bool,
 ) -> str:
-    """Classify the strongest public evidence while keeping impact independent."""
-    if arbitrary_code_execution:
-        return "E5"
-    if control_flow_redirection:
-        return "E4"
-    if primitive_characterized:
-        return "E3"
-    if reproduced_failure or component_identified:
-        return "E2"
-    return "E1"
+    """Classify public evidence depth while keeping impact independent."""
+    if arbitrary_code_execution or control_flow_redirection:
+        return "exploitation-evidence"
+    if primitive_characterized or reproduced_failure or component_identified:
+        return "technical-characterization"
+    return "advisory-only"
 
 
 def enrich_record(raw: RawRecord, typst: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any]]:
@@ -1008,6 +1022,7 @@ def enrich_record(raw: RawRecord, typst: dict[str, Any]) -> tuple[dict[str, Any]
         "year": parse_date(raw.date_published)[1] or int(raw.cve_id.split("-")[1]),
         "description": raw.description,
         "cwe": raw.cwe_text,
+        "affected_chipsets": extract_affected_chipsets(raw.raw),
         "manual_enrichment": {
             "protocol": manual_protocol,
             "impact": manual_impact,
@@ -1043,7 +1058,7 @@ def enrich_record(raw: RawRecord, typst: dict[str, Any]) -> tuple[dict[str, Any]
         "component/protocol-level",
     }
     primitive_characterized = evidence.get("primitive_characterized", False)
-    evidence_level = classify_evidence_level(
+    evidence_band = classify_evidence_band(
         component_identified,
         evidence.get("reproduced_failure", False),
         primitive_characterized,
@@ -1069,8 +1084,8 @@ def enrich_record(raw: RawRecord, typst: dict[str, Any]) -> tuple[dict[str, Any]
         "reachability": infer_reachability(primary_scope, combined, evidence),
         "root_cause_detail": root_cause_detail,
         "evidence": {
-            "level": evidence_level,
-            "summary": evidence.get("reason") or EVIDENCE_LEVEL_SUMMARIES[evidence_level],
+            "band": evidence_band,
+            "summary": evidence.get("reason") or EVIDENCE_BAND_SUMMARIES[evidence_band],
             "component_identified": component_identified,
             "reproduced_failure": evidence.get("reproduced_failure", False),
             "primitive_characterized": primitive_characterized,
@@ -1219,8 +1234,8 @@ def build_summary(
         "bug_family": counter_dict((r["bug_family"] for r in records), BUG_FAMILY_ORDER),
         "protocol_hits": counter_dict((protocol for r in records for protocol in r["protocols"])),
         "reachability": counter_dict((r["reachability"] for r in records)),
-        "evidence_level": counter_dict(
-            (r["evidence"]["level"] for r in records), EVIDENCE_LEVELS
+        "evidence_band": counter_dict(
+            (r["evidence"]["band"] for r in records), EVIDENCE_BANDS
         ),
         "source_type_hits": counter_dict(
             source["type"] for record in records for source in record["sources"]
@@ -1283,8 +1298,8 @@ def build_summary(
                 "missing-memory-evidence assumption. Impact remains independent: an otherwise "
                 "confirmed RCE stays RCE; other unknown-primitive cases receive conservative DoS."
             ),
-            **EVIDENCE_LEVEL_SUMMARIES,
-            "evidence_independence": "Evidence level measures information completeness, not impact or criticality.",
+            "evidence_bands": EVIDENCE_BAND_SUMMARIES,
+            "evidence_independence": "Evidence depth measures information completeness, not impact or criticality.",
             "scope": "Primary attack surface is separate from multi-valued RAT and protocol annotations; Multi-RAT is not a catch-all scope.",
             "scope_comparison": "Counts measure disclosures in this corpus, not per-device or per-line-of-code vulnerability rates.",
             "missing_memory_evidence": "If a record is not explicitly non-memory and no public memory-safety root cause exists, retain it in the Assumed memory bug family. Use conservative DoS unless independent public evidence confirms RCE.",
@@ -1310,7 +1325,7 @@ def build_rce_audit(
                 "cve_id": cve_id,
                 "legacy_label": "RCE",
                 "final_impact": record["impact"],
-                "evidence_level": record["evidence"]["level"],
+                "evidence_band": record["evidence"]["band"],
                 "decision": (
                     "retained: public control-flow/code-execution evidence"
                     if record["impact"] == IMPACT_RCE
@@ -1345,7 +1360,7 @@ def build_rce_audit(
                 "cve_id": cve_id,
                 "legacy_label": "RCE",
                 "final_impact": "Excluded",
-                "evidence_level": "not-applicable",
+                "evidence_band": "not-applicable",
                 "decision": "excluded: no public memory-safety root cause in the supplied record",
                 "reason": record.get("excluded_reason", "record not present"),
                 "sources": output_sources(sources),
@@ -1399,7 +1414,7 @@ def build_source_provenance_audit(
             ),
             "input_reference_candidates": (
                 "URLs inherited from source JSON are retained for traceability but are unverified "
-                "and never used to justify classification or evidence levels."
+                "and never used to justify classification or evidence depth."
             ),
             "online_checked_meaning": (
                 "content-reviewed denotes a manual content/relevance review on audit_date; "
@@ -1436,10 +1451,10 @@ def validate_outputs(
     assert not set(record_ids).intersection(excluded_ids), "included/excluded overlap"
     assert all(record["impact"] in IMPACT_ORDER for record in records)
     assert all(record["primary_scope"] in SCOPE_ORDER for record in records)
-    assert all(record["evidence"]["level"] in EVIDENCE_LEVELS for record in records)
+    assert all(record["evidence"]["band"] in EVIDENCE_BANDS for record in records)
     assert all(
-        record["evidence"]["level"]
-        == classify_evidence_level(
+        record["evidence"]["band"]
+        == classify_evidence_band(
             record["evidence"]["component_identified"],
             record["evidence"]["reproduced_failure"],
             record["evidence"]["primitive_characterized"],
@@ -1447,7 +1462,8 @@ def validate_outputs(
             record["evidence"]["arbitrary_code_execution"],
         )
         for record in records
-    ), "evidence levels must depend only on component and primitive knowledge"
+    ), "evidence bands must depend only on component and primitive knowledge"
+    assert all(isinstance(record["affected_chipsets"], list) for record in records)
     assert all(
         record["impact"] == IMPACT_DOS
         for record in records
@@ -1490,7 +1506,8 @@ def write_csv(path: Path, records: list[dict[str, Any]]) -> None:
         "cve_id", "vendor", "date_published", "year", "impact", "bug_class", "bug_family",
         "memory_safety_basis",
         "primitive_control", "primary_scope", "scopes", "rats", "protocols",
-        "scope_evidence", "reachability", "root_cause_detail", "evidence_level",
+        "scope_evidence", "reachability", "root_cause", "root_cause_detail",
+        "affected_chipsets", "evidence_band",
         "source_beyond_vendor_advisory", "source_urls",
     )
     with path.open("w", encoding="utf-8", newline="") as handle:
@@ -1502,7 +1519,9 @@ def write_csv(path: Path, records: list[dict[str, Any]]) -> None:
                 "scopes": "; ".join(record["scopes"]),
                 "rats": "; ".join(record["rats"]),
                 "protocols": "; ".join(record["protocols"]),
-                "evidence_level": record["evidence"]["level"],
+                "root_cause": record["manual_enrichment"]["root_cause"] or record["cwe"] or record["bug_class"],
+                "affected_chipsets": "; ".join(record["affected_chipsets"]),
+                "evidence_band": record["evidence"]["band"],
                 "source_urls": "; ".join(item["url"] for item in record["sources"]),
             })
 
@@ -1675,7 +1694,7 @@ def run(
     )
     manifest = {
         "schema_version": SCHEMA_VERSION,
-        "analysis_release": "evidence-aware-taxonomy-v2.9",
+        "analysis_release": "evidence-aware-taxonomy-v3.0",
         "source_audit_date": SOURCE_AUDIT_DATE,
         "description": "Assumption-inclusive, evidence-aware baseband memory-safety CVE dataset.",
         "implementation": {
