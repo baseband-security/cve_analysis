@@ -1,6 +1,6 @@
 # Evidence-Aware Baseband CVE Dataset
 
-This repository contains the source-only, schema-3.0 reproduction pipeline. Its
+This repository contains the source-only, schema-3.1 reproduction pipeline. Its
 Nix flake pins both the execution environment and the official CVE List V5 Git
 revision. No acquired JSON or generated datasets are stored in Git.
 
@@ -17,7 +17,7 @@ The default app performs both stages automatically:
 1. `fetch_json.py` scans the pinned CVE List V5 checkout offline and writes the
    four vendor collections to `fetched_json/`.
 2. `enrich.py` reads those fresh collections plus `cve_table.typ` and writes the
-   datasets, audits, manifest, CSV, and figures to `outputs/`.
+   datasets, source-provenance metadata, manifest, CSV, and figures to `outputs/`.
 
 During the bulk scan it prints progress every 25,000 CVE records, including
 elapsed time, candidate count, and records per second.
@@ -65,7 +65,7 @@ files.
 ├── flake.nix          # environment and fetch → enrich default app
 ├── flake.lock         # pinned Nixpkgs and cvelistV5.git revisions
 ├── fetch_json.py      # deterministic CVE List V5 acquisition
-├── enrich.py          # classification, exports, audits, and figures
+├── enrich.py          # classification, exports, provenance, and figures
 ├── verify_outputs.py  # independent integrity and frozen-result checks
 ├── serve.py           # local static/data server
 ├── web/               # Baseband memory-safety artifact explorer

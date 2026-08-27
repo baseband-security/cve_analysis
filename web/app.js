@@ -4,7 +4,6 @@ const DATA_FILES = {
   summary: "/data/classification_summary.json",
   records: "/data/baseband_memory_cves.json",
   excluded: "/data/excluded_non_memory_cves.json",
-  rceAudit: "/data/rce_candidate_audit.json",
   manifest: "/data/dataset_manifest.json",
 };
 
@@ -87,16 +86,6 @@ async function loadData() {
     return [key, await response.json()];
   }));
   const data = Object.fromEntries(entries);
-  const byId = new Map([...data.records, ...data.excluded].map((record) => [record.cve_id, record]));
-  data.rceAudit = data.rceAudit.map((audit) => ({
-    ...byId.get(audit.cve_id),
-    ...audit,
-    impact: audit.final_impact,
-    evidence: { band: audit.evidence_band, summary: audit.reason },
-    primary_scope: byId.get(audit.cve_id)?.primary_scope || "Unknown",
-    bug_family: byId.get(audit.cve_id)?.bug_family || "—",
-    record_type: "audit",
-  }));
   data.records = data.records.map((record) => ({ ...record, record_type: "included" }));
   data.excluded = data.excluded.map((record) => ({
     ...record,
@@ -120,7 +109,6 @@ function renderMetrics() {
   $(".signal-core b").textContent = summary.included_memory_safety_cves;
   $("#releaseLabel").textContent = `${manifest.analysis_release} · verified`;
   $("#includedTabCount").textContent = state.data.records.length;
-  $("#rceTabCount").textContent = state.data.rceAudit.length;
   $("#excludedTabCount").textContent = state.data.excluded.length;
 }
 
@@ -161,7 +149,6 @@ function renderEvidence() {
 }
 
 function currentDataset() {
-  if (state.view === "rce") return state.data.rceAudit;
   if (state.view === "excluded") return state.data.excluded;
   return state.data.records;
 }
@@ -215,8 +202,7 @@ function renderTable() {
   $("#nextPage").disabled = state.page >= pages;
 }
 
-function detailRecord(cve, type) {
-  if (type === "audit") return state.data.rceAudit.find((item) => item.cve_id === cve);
+function detailRecord(cve) {
   return state.data.byId.get(cve);
 }
 
@@ -243,10 +229,10 @@ function openDrawer(record, updateHash = true) {
   ] : [];
   const sources = safeSources(record.sources);
   $("#drawerContent").innerHTML = `
-    <p class="drawer-kicker">${escapeHtml(record.record_type === "audit" ? "Legacy RCE decision" : "Artifact record")}</p>
+    <p class="drawer-kicker">Artifact record</p>
     <h2 id="drawerTitle">${escapeHtml(record.cve_id)}</h2>
     <div class="drawer-badges"><span class="badge ${impactClass(record.impact)}">${escapeHtml(record.impact || "—")}</span></div>
-    <div class="drawer-summary"><b>${record.record_type === "excluded" ? "Exclusion rationale" : record.record_type === "audit" ? escapeHtml(record.decision) : "Evidence summary"}</b><p>${escapeHtml(evidence.summary || record.description || "No public summary encoded.")}</p></div>
+    <div class="drawer-summary"><b>${record.record_type === "excluded" ? "Exclusion rationale" : "Evidence summary"}</b><p>${escapeHtml(evidence.summary || record.description || "No public summary encoded.")}</p></div>
     ${evidenceBands[evidence.band] ? `<div class="evidence-meaning ${evidenceClass(record)}"><b>${escapeHtml(evidenceBands[evidence.band].label)}</b><p>${escapeHtml(evidenceBands[evidence.band].description)}</p></div>` : ""}
     ${record.description ? `<section class="drawer-section"><h3>Canonical description</h3><p>${escapeHtml(record.description)}</p></section>` : ""}
     <section class="drawer-section"><h3>Classification</h3><dl class="definition-grid">${definitions.map(([term, value]) => `<div><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl></section>
@@ -300,7 +286,7 @@ function bindEvents() {
   $("#previousPage").addEventListener("click", () => { state.page -= 1; renderTable(); });
   $("#nextPage").addEventListener("click", () => { state.page += 1; renderTable(); });
   $("#exportButton").addEventListener("click", exportCsv);
-  $("#recordRows").addEventListener("click", (event) => { const row = event.target.closest("tr"); if (row) openDrawer(detailRecord(row.dataset.cve, row.dataset.type)); });
+  $("#recordRows").addEventListener("click", (event) => { const row = event.target.closest("tr"); if (row) openDrawer(detailRecord(row.dataset.cve)); });
   $("#recordRows").addEventListener("keydown", (event) => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); event.target.click(); } });
   $$("th button[data-sort]").forEach((button) => button.addEventListener("click", () => {
     const field = button.dataset.sort;

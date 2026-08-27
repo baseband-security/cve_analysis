@@ -10,8 +10,8 @@ This is the Version-B research pipeline.  It deliberately separates:
 * evidence stated in a vendor CVE from evidence supplied by a paper or write-up.
 
 The script consumes the four local CVE JSON files plus cve_table.typ.  It emits a
-filtered, memory-safety-only dataset, an audit of every legacy RCE candidate, a
-machine-readable summary answering the Version-B questions, CSV, and figures.
+filtered, memory-safety-only dataset, a machine-readable summary answering the
+Version-B questions, CSV, provenance metadata, and figures.
 
 No network request is made at runtime.  Identifier-specific NVD links are generated
 deterministically; research-source URLs and the small set of strictly verified RCE
@@ -34,7 +34,7 @@ from typing import Any, Iterable
 from urllib.parse import urlparse
 
 
-SCHEMA_VERSION = "3.0"
+SCHEMA_VERSION = "3.1"
 SOURCE_AUDIT_DATE = "2026-08-27"
 REPOSITORY_ROOT = Path(__file__).resolve().parent
 DEFAULT_TYPST = REPOSITORY_ROOT / "cve_table.typ"
@@ -476,26 +476,6 @@ RESEARCH_EVIDENCE: dict[str, dict[str, Any]] = {
         primitive=True,
     ),
 }
-
-
-# The prior script classified these 45 records as RCE.  The new audit output retains
-# the complete candidate list so every demotion is explicit and source-traceable.
-LEGACY_RCE_CANDIDATES = frozenset(
-    """
-    CVE-2010-3832 CVE-2015-8546 CVE-2020-25279 CVE-2021-25478 CVE-2021-25479
-    CVE-2021-32484 CVE-2021-32485 CVE-2021-32486 CVE-2021-32487
-    CVE-2022-20083 CVE-2022-20170 CVE-2022-21744 CVE-2022-25682
-    CVE-2022-25695 CVE-2022-25727 CVE-2022-33259 CVE-2023-21517
-    CVE-2023-22385 CVE-2023-24033 CVE-2023-26072 CVE-2023-26073
-    CVE-2023-26074 CVE-2023-26075 CVE-2023-26076 CVE-2023-26496
-    CVE-2023-26497 CVE-2023-26498 CVE-2023-32874 CVE-2023-41111
-    CVE-2023-41112 CVE-2023-50807 CVE-2024-20039 CVE-2024-20082
-    CVE-2024-20154 CVE-2024-39890 CVE-2025-20634 CVE-2025-20704
-    CVE-2025-20708 CVE-2025-20725 CVE-2025-20726 CVE-2025-20727
-    CVE-2025-31718 CVE-2025-54329 CVE-2026-20432 CVE-2026-20433
-    CVE-2026-20434
-    """.split()
-)
 
 
 RESEARCH_REF_PREFIXES = (
@@ -1307,74 +1287,6 @@ def build_summary(
     }
 
 
-def build_rce_audit(
-    records: list[dict[str, Any]],
-    excluded: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    included_by_id = {r["cve_id"]: r for r in records}
-    excluded_by_id = {r["cve_id"]: r for r in excluded}
-    rows: list[dict[str, Any]] = []
-    for cve_id in sorted(LEGACY_RCE_CANDIDATES):
-        if cve_id in included_by_id:
-            record = included_by_id[cve_id]
-            sources = record["sources"]
-            reviewed_sources = [
-                item for item in sources if item["verification"] == "content-reviewed"
-            ]
-            rows.append({
-                "cve_id": cve_id,
-                "legacy_label": "RCE",
-                "final_impact": record["impact"],
-                "evidence_band": record["evidence"]["band"],
-                "decision": (
-                    "retained: public control-flow/code-execution evidence"
-                    if record["impact"] == IMPACT_RCE
-                    else "demoted: public evidence supports a write primitive but not demonstrated RCE"
-                    if record["impact"] == IMPACT_WRITE
-                    else "demoted: retained as a low-information CVE; no public RCE or memory root-cause evidence"
-                    if record["bug_class"] == "low-information-cve"
-                    else "demoted: public evidence supports a memory-safety crash/read outcome"
-                ),
-                "reason": (
-                    "No public memory-safety root cause; retained under the declared missing-evidence "
-                    "memory-bug assumption with conservative DoS impact."
-                    if record["bug_class"] == "low-information-cve"
-                    else record["evidence"]["summary"]
-                ),
-                "sources": output_sources(sources),
-                "source_checked_online": bool(reviewed_sources),
-                "source_checked_date": SOURCE_AUDIT_DATE if reviewed_sources else "",
-                "source_review_status": (
-                    "one-or-more technical/advisory sources content-reviewed"
-                    if reviewed_sources
-                    else "canonical CVE link only; no technical source content review"
-                ),
-            })
-        else:
-            record = excluded_by_id.get(cve_id, {})
-            sources = record.get("sources", [])
-            reviewed_sources = [
-                item for item in sources if item["verification"] == "content-reviewed"
-            ]
-            rows.append({
-                "cve_id": cve_id,
-                "legacy_label": "RCE",
-                "final_impact": "Excluded",
-                "evidence_band": "not-applicable",
-                "decision": "excluded: no public memory-safety root cause in the supplied record",
-                "reason": record.get("excluded_reason", "record not present"),
-                "sources": output_sources(sources),
-                "source_checked_online": bool(reviewed_sources),
-                "source_checked_date": SOURCE_AUDIT_DATE if reviewed_sources else "",
-                "source_review_status": (
-                    "one-or-more technical/advisory sources content-reviewed"
-                    if reviewed_sources
-                    else "canonical CVE link only; no technical source content review"
-                ),
-            })
-    return rows
-
-
 def build_source_provenance_audit(
     records: list[dict[str, Any]],
     excluded: list[dict[str, Any]],
@@ -1442,7 +1354,6 @@ def build_source_provenance_audit(
 def validate_outputs(
     records: list[dict[str, Any]],
     excluded: list[dict[str, Any]],
-    audit: list[dict[str, Any]],
 ) -> None:
     record_ids = [record["cve_id"] for record in records]
     excluded_ids = [record["cve_id"] for record in excluded]
@@ -1485,8 +1396,6 @@ def validate_outputs(
         if record["bug_class"] == "buffer-overflow"
     ), "explicit buffer overflows must retain write-primitive impact"
     assert {record["cve_id"] for record in records if record["impact"] == IMPACT_RCE} == set(VERIFIED_RCE)
-    assert len(audit) == len(LEGACY_RCE_CANDIDATES)
-    assert all(row["sources"] for row in audit), "every legacy RCE candidate needs a public source"
     assert all(
         any(item["type"] == "research" for item in record["sources"])
         for record in records if record["impact"] == IMPACT_RCE
@@ -1670,11 +1579,13 @@ def run(
     records.sort(key=lambda item: (item["date_published"], item["cve_id"]))
     excluded.sort(key=lambda item: item["cve_id"])
     summary = build_summary(records, excluded, len(raw_records))
-    audit = build_rce_audit(records, excluded)
-    validate_outputs(records, excluded, audit)
+    validate_outputs(records, excluded)
     source_audit = build_source_provenance_audit(records, excluded)
 
     output.mkdir(parents=True, exist_ok=True)
+    # Schema 3.1 removed the legacy RCE audit. Clean an artifact left by an
+    # earlier run so an in-place regeneration has the same output contract.
+    (output / "rce_candidate_audit.json").unlink(missing_ok=True)
     (output / "baseband_memory_cves.json").write_text(
         json.dumps([output_record(record) for record in records], indent=2, ensure_ascii=False)
         + "\n",
@@ -1688,15 +1599,12 @@ def run(
     (output / "classification_summary.json").write_text(
         json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
-    (output / "rce_candidate_audit.json").write_text(
-        json.dumps(audit, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
     (output / "source_provenance_audit.json").write_text(
         json.dumps(source_audit, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
     manifest = {
         "schema_version": SCHEMA_VERSION,
-        "analysis_release": "evidence-aware-taxonomy-v3.0",
+        "analysis_release": "evidence-aware-taxonomy-v3.1",
         "source_audit_date": SOURCE_AUDIT_DATE,
         "description": "Low-information-inclusive, evidence-aware baseband memory-safety CVE dataset.",
         "implementation": {
@@ -1726,7 +1634,6 @@ def run(
             "low_information_cves_receive_conservative_dos": True,
             "retained_rces_equal_curated_verified_set": True,
             "all_retained_rces_have_research_sources": True,
-            "all_legacy_rce_candidates_have_public_sources": True,
             "all_records_have_identifier_specific_canonical_sources": True,
             "inherited_input_urls_are_not_used_as_evidence": True,
         },

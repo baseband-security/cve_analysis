@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify a generated schema-3.0 baseband CVE artifact directory."""
+"""Verify a generated schema-3.1 baseband CVE artifact directory."""
 
 from __future__ import annotations
 
@@ -83,18 +83,17 @@ def main() -> None:
         "baseband_memory_cves.csv",
         "excluded_non_memory_cves.json",
         "classification_summary.json",
-        "rce_candidate_audit.json",
         "source_provenance_audit.json",
         "dataset_manifest.json",
     )
     for filename in required:
         path = output / filename
         assert path.is_file() and path.stat().st_size > 0, f"missing output: {path}"
+    assert not (output / "rce_candidate_audit.json").exists(), "obsolete RCE audit still present"
 
     records = load_json(output / "baseband_memory_cves.json")
     excluded = load_json(output / "excluded_non_memory_cves.json")
     summary = load_json(output / "classification_summary.json")
-    audit = load_json(output / "rce_candidate_audit.json")
     source_audit = load_json(output / "source_provenance_audit.json")
     manifest = load_json(output / "dataset_manifest.json")
     with (output / "baseband_memory_cves.csv").open(encoding="utf-8", newline="") as handle:
@@ -104,13 +103,12 @@ def main() -> None:
     csv_ids = [record["cve_id"] for record in csv_records]
     excluded_ids = [record["cve_id"] for record in excluded]
 
-    assert summary["schema_version"] == manifest["schema_version"] == "3.0"
-    assert source_audit["schema_version"] == "3.0"
-    assert manifest["analysis_release"] == "evidence-aware-taxonomy-v3.0"
+    assert summary["schema_version"] == manifest["schema_version"] == "3.1"
+    assert source_audit["schema_version"] == "3.1"
+    assert manifest["analysis_release"] == "evidence-aware-taxonomy-v3.1"
     assert summary["input_unique_cves"] == 622
     assert len(records) == len(csv_records) == 590
     assert len(excluded) == 32
-    assert len(audit) == 46
     assert len(ids) == len(set(ids)), "included CVE IDs are not unique"
     assert set(ids) == set(csv_ids), "CSV and JSON CVE sets differ"
     assert set(ids).isdisjoint(excluded_ids), "included and excluded CVEs overlap"
@@ -187,12 +185,11 @@ def main() -> None:
     )
     assert all(
         set(source) == {"title", "url"}
-        for item in records + excluded + audit
+        for item in records + excluded
         for source in item["sources"]
     )
     assert all(
-        "legacy_rce_candidate" not in record
-        and "input_reference_candidates" not in record
+        "input_reference_candidates" not in record
         and "source_types" not in record
         for record in records + excluded
     )
