@@ -2,8 +2,12 @@
   description = "Reproducible environment for the evidence-aware baseband CVE dataset";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+  inputs.cvelistV5 = {
+    url = "git+https://github.com/CVEProject/cvelistV5.git?shallow=1";
+    flake = false;
+  };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, cvelistV5 }:
     let
       systems = [ "x86_64-linux" "aarch64-linux" ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
@@ -29,7 +33,16 @@
             name = "baseband-cve-fetch";
             runtimeInputs = [ python ];
             text = ''
-              exec python ${self}/fetch_json.py "$@"
+              source_args=(--cve-list-dir ${cvelistV5})
+              for arg in "$@"; do
+                case "$arg" in
+                  --cve-list-dir|--cve-list-dir=*|--cve-list-zip|--cve-list-zip=*)
+                    source_args=()
+                    break
+                    ;;
+                esac
+              done
+              exec python ${self}/fetch_json.py "''${source_args[@]}" "$@"
             '';
           };
         in
@@ -69,6 +82,7 @@
             packages = [ p.python ];
             shellHook = ''
               export MPLCONFIGDIR="''${TMPDIR:-/tmp}/baseband-cve-matplotlib"
+              export CVELISTV5_DIR="${cvelistV5}"
             '';
           };
         });
@@ -80,6 +94,7 @@
             nativeBuildInputs = [ p.python ];
           } ''
             export MPLCONFIGDIR="$TMPDIR/matplotlib"
+            test -d ${cvelistV5}/cves
             cd ${self}
             python -m unittest -v test_fetch_json.py
             python enrich.py --output "$TMPDIR/generated"

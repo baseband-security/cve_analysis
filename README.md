@@ -74,9 +74,19 @@ nix --extra-experimental-features 'nix-command flakes' flake check
 ```
 
 The verification command ends with `Artifact verification: PASS`. The flake
-check also runs the acquisition regression tests. Dataset generation is offline;
-only the optional acquisition app (`nix run .#fetch -- ...`) accesses the
-network.
+check also runs the acquisition regression tests. The official `cvelistV5.git`
+repository is a required, revision-locked flake input. `nix develop` exposes its
+immutable checkout as `$CVELISTV5_DIR`, and the fetch app uses it automatically:
+
+```bash
+nix --extra-experimental-features 'nix-command flakes' run .#fetch -- \
+  --output-dir fetched_json
+```
+
+Pass `--cve-list-dir` or `--cve-list-zip` only when intentionally overriding
+the locked input. Dataset enrichment remains offline; acquisition can still
+access Android and vendor sites unless their corresponding `--no-*` switches
+are supplied.
 
 ## Python fallback
 

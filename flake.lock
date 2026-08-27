@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "cvelistV5": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787803110,
+        "narHash": "sha256-g5MxHQ0Dz/3KxwIYKhFgU782UzbtHpvDDV1OeTlkr0k=",
+        "ref": "refs/heads/main",
+        "rev": "ef1e65d72796f76c4cde5076742e0a79ba8164b9",
+        "shallow": true,
+        "type": "git",
+        "url": "https://github.com/CVEProject/cvelistV5.git"
+      },
+      "original": {
+        "shallow": true,
+        "type": "git",
+        "url": "https://github.com/CVEProject/cvelistV5.git"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1767313136,
@@ -18,6 +35,7 @@
     },
     "root": {
       "inputs": {
+        "cvelistV5": "cvelistV5",
         "nixpkgs": "nixpkgs"
       }
     }
