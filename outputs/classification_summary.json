@@ -1,0 +1,639 @@
+{
+  "schema_version": "2.9",
+  "source_audit_date": "2026-08-27",
+  "input_unique_cves": 622,
+  "included_memory_safety_cves": 590,
+  "excluded_non_memory_or_insufficient_evidence": 32,
+  "impact": {
+    "RCE": 11,
+    "Write Primitive": 194,
+    "DoS": 385
+  },
+  "primary_scope": {
+    "Cellular Control Plane": 220,
+    "IMS/Telephony": 100,
+    "SIM/UICC": 15,
+    "IP/User Plane": 34,
+    "Local/IPC & Diagnostic": 24,
+    "Unknown": 197
+  },
+  "vendor": {
+    "Apple": 4,
+    "MediaTek": 101,
+    "Qualcomm": 317,
+    "Samsung": 109,
+    "Unisoc": 59
+  },
+  "year": {
+    "2010": 1,
+    "2016": 1,
+    "2017": 31,
+    "2018": 27,
+    "2019": 25,
+    "2020": 42,
+    "2021": 68,
+    "2022": 69,
+    "2023": 128,
+    "2024": 63,
+    "2025": 68,
+    "2026": 67
+  },
+  "rat_hits": {
+    "2G": 20,
+    "3G": 19,
+    "4G/LTE": 61,
+    "5G/NR": 48
+  },
+  "bug_class": {
+    "array-index-write": 21,
+    "assumed-memory-bug": 274,
+    "buffer-overflow": 36,
+    "classic-buffer-overflow": 10,
+    "double-free": 3,
+    "heap-buffer-overflow": 26,
+    "invalid-free": 2,
+    "invalid-memory-access": 1,
+    "memory-corruption-unspecified": 20,
+    "null-pointer-dereference": 27,
+    "out-of-bounds-read": 61,
+    "out-of-bounds-write": 62,
+    "out-of-range-pointer": 7,
+    "stack-buffer-overflow": 25,
+    "uninitialized-memory-read": 2,
+    "unknown-memory-operation-rce": 1,
+    "use-after-free": 11,
+    "write-what-where": 1
+  },
+  "bug_family": {
+    "Bounds write / overflow": 181,
+    "Bounds read": 63,
+    "Null dereference": 28,
+    "Lifetime / pointer misuse": 23,
+    "Assumed memory bug": 295
+  },
+  "protocol_hits": {
+    "Call Control": 4,
+    "IMS/SIP": 63,
+    "IP stack": 26,
+    "MAC": 5,
+    "MM": 12,
+    "NAS": 48,
+    "PDCP": 5,
+    "RLC": 9,
+    "RRC": 34,
+    "RRM": 4,
+    "SDP": 20,
+    "SIM/UICC": 17,
+    "SM": 5,
+    "SMS": 13
+  },
+  "reachability": {
+    "Cellular OTA or network-originated; state not public": 165,
+    "Cellular OTA; registered/connected state in the published reproduction": 1,
+    "Cellular OTA; unauthenticated 2G Layer 2": 1,
+    "Cellular OTA; unauthenticated 2G Layer 2; chained with CVE-2023-41111": 1,
+    "IMS/telephony path; registration/authentication state not consistently public": 92,
+    "Internet-to-baseband; phone number only; no user interaction": 4,
+    "Local or intra-device": 24,
+    "Rogue base station; 2G GPRS PNCD; no user interaction": 1,
+    "Rogue base station; 2G OTA; call-control state": 1,
+    "Rogue base station; 2G OTA; no user interaction": 1,
+    "Rogue base station; authentication/state not fully specified": 52,
+    "Rogue base station; pre-authentication GSM": 1,
+    "SIM/UICC-originated or physical/compromised-card path": 15,
+    "Unknown": 231
+  },
+  "evidence_level": {
+    "E1": 348,
+    "E2": 217,
+    "E3": 14,
+    "E4": 1,
+    "E5": 10
+  },
+  "source_type_hits": {
+    "research": 34,
+    "vendor-advisory": 1,
+    "vulnerability-database": 590
+  },
+  "scope_assignment_basis": {
+    "manual_annotation_plus_description": 74,
+    "description_keyword_inference": 321,
+    "unknown": 195
+  },
+  "memory_safety_basis": {
+    "assumed_when_public_evidence_absent": 275,
+    "explicit_public_memory_safety_evidence": 315
+  },
+  "coverage": {
+    "known_primary_scope": {
+      "count": 393,
+      "percent": 66.6
+    },
+    "specific_protocol": {
+      "count": 233,
+      "percent": 39.5
+    },
+    "specific_bug_class": {
+      "count": 295,
+      "percent": 50.0
+    },
+    "explicit_public_memory_safety_evidence": {
+      "count": 315,
+      "percent": 53.4
+    },
+    "assumed_memory_bug": {
+      "count": 275,
+      "percent": 46.6
+    },
+    "source_beyond_vendor_advisory": {
+      "count": 36,
+      "percent": 6.1
+    },
+    "public_reproduced_failure": {
+      "count": 20,
+      "percent": 3.4
+    },
+    "public_primitive_characterization": {
+      "count": 21,
+      "percent": 3.6
+    },
+    "public_control_flow_or_code_execution": {
+      "count": 11,
+      "percent": 1.9
+    },
+    "patch_identifier": {
+      "count": 96,
+      "percent": 16.3
+    },
+    "affected_or_fixed_firmware_range": {
+      "count": 219,
+      "percent": 37.1
+    },
+    "public_patch_diff": {
+      "count": 0,
+      "percent": 0.0
+    }
+  },
+  "year_by_impact": {
+    "2010": {
+      "RCE": 1
+    },
+    "2016": {
+      "DoS": 1
+    },
+    "2017": {
+      "Write Primitive": 12,
+      "DoS": 19
+    },
+    "2018": {
+      "Write Primitive": 10,
+      "DoS": 17
+    },
+    "2019": {
+      "Write Primitive": 9,
+      "DoS": 16
+    },
+    "2020": {
+      "RCE": 1,
+      "Write Primitive": 23,
+      "DoS": 18
+    },
+    "2021": {
+      "Write Primitive": 28,
+      "DoS": 40
+    },
+    "2022": {
+      "RCE": 2,
+      "Write Primitive": 16,
+      "DoS": 51
+    },
+    "2023": {
+      "RCE": 6,
+      "Write Primitive": 41,
+      "DoS": 81
+    },
+    "2024": {
+      "RCE": 1,
+      "Write Primitive": 24,
+      "DoS": 38
+    },
+    "2025": {
+      "Write Primitive": 17,
+      "DoS": 51
+    },
+    "2026": {
+      "Write Primitive": 14,
+      "DoS": 53
+    }
+  },
+  "scope_profiles": {
+    "Cellular Control Plane": {
+      "count": 220,
+      "percent_of_filtered_dataset": 37.3,
+      "impact": {
+        "RCE": 7,
+        "Write Primitive": 57,
+        "DoS": 156
+      },
+      "write_capable_or_rce": {
+        "count": 64,
+        "percent_within_scope": 29.1
+      },
+      "bug_family": {
+        "Bounds write / overflow": 58,
+        "Bounds read": 14,
+        "Null dereference": 12,
+        "Lifetime / pointer misuse": 6,
+        "Assumed memory bug": 130
+      },
+      "top_bug_classes": [
+        {
+          "bug_class": "assumed-memory-bug",
+          "count": 129
+        },
+        {
+          "bug_class": "out-of-bounds-write",
+          "count": 26
+        },
+        {
+          "bug_class": "heap-buffer-overflow",
+          "count": 14
+        },
+        {
+          "bug_class": "out-of-bounds-read",
+          "count": 13
+        },
+        {
+          "bug_class": "null-pointer-dereference",
+          "count": 11
+        },
+        {
+          "bug_class": "stack-buffer-overflow",
+          "count": 10
+        }
+      ],
+      "protocol_hits": {
+        "Call Control": 4,
+        "MAC": 4,
+        "MM": 12,
+        "NAS": 45,
+        "PDCP": 5,
+        "RLC": 9,
+        "RRC": 34,
+        "RRM": 4,
+        "SM": 4
+      },
+      "vendor_disclosures": {
+        "Apple": 1,
+        "MediaTek": 66,
+        "Qualcomm": 75,
+        "Samsung": 52,
+        "Unisoc": 26
+      }
+    },
+    "IMS/Telephony": {
+      "count": 100,
+      "percent_of_filtered_dataset": 16.9,
+      "impact": {
+        "RCE": 4,
+        "Write Primitive": 41,
+        "DoS": 55
+      },
+      "write_capable_or_rce": {
+        "count": 45,
+        "percent_within_scope": 45.0
+      },
+      "bug_family": {
+        "Bounds write / overflow": 42,
+        "Bounds read": 17,
+        "Null dereference": 2,
+        "Lifetime / pointer misuse": 2,
+        "Assumed memory bug": 37
+      },
+      "top_bug_classes": [
+        {
+          "bug_class": "assumed-memory-bug",
+          "count": 34
+        },
+        {
+          "bug_class": "out-of-bounds-read",
+          "count": 17
+        },
+        {
+          "bug_class": "out-of-bounds-write",
+          "count": 14
+        },
+        {
+          "bug_class": "array-index-write",
+          "count": 9
+        },
+        {
+          "bug_class": "stack-buffer-overflow",
+          "count": 7
+        },
+        {
+          "bug_class": "buffer-overflow",
+          "count": 5
+        }
+      ],
+      "protocol_hits": {
+        "IMS/SIP": 63,
+        "NAS": 3,
+        "SDP": 20,
+        "SIM/UICC": 2,
+        "SM": 1,
+        "SMS": 13
+      },
+      "vendor_disclosures": {
+        "MediaTek": 14,
+        "Qualcomm": 53,
+        "Samsung": 19,
+        "Unisoc": 14
+      }
+    },
+    "SIM/UICC": {
+      "count": 15,
+      "percent_of_filtered_dataset": 2.5,
+      "impact": {
+        "Write Primitive": 10,
+        "DoS": 5
+      },
+      "write_capable_or_rce": {
+        "count": 10,
+        "percent_within_scope": 66.7
+      },
+      "bug_family": {
+        "Bounds write / overflow": 7,
+        "Lifetime / pointer misuse": 3,
+        "Assumed memory bug": 5
+      },
+      "top_bug_classes": [
+        {
+          "bug_class": "assumed-memory-bug",
+          "count": 5
+        },
+        {
+          "bug_class": "buffer-overflow",
+          "count": 2
+        },
+        {
+          "bug_class": "out-of-range-pointer",
+          "count": 2
+        },
+        {
+          "bug_class": "array-index-write",
+          "count": 2
+        },
+        {
+          "bug_class": "heap-buffer-overflow",
+          "count": 2
+        },
+        {
+          "bug_class": "double-free",
+          "count": 1
+        }
+      ],
+      "protocol_hits": {
+        "SIM/UICC": 15
+      },
+      "vendor_disclosures": {
+        "Qualcomm": 10,
+        "Samsung": 5
+      }
+    },
+    "IP/User Plane": {
+      "count": 34,
+      "percent_of_filtered_dataset": 5.8,
+      "impact": {
+        "Write Primitive": 8,
+        "DoS": 26
+      },
+      "write_capable_or_rce": {
+        "count": 8,
+        "percent_within_scope": 23.5
+      },
+      "bug_family": {
+        "Bounds write / overflow": 8,
+        "Bounds read": 12,
+        "Null dereference": 4,
+        "Assumed memory bug": 10
+      },
+      "top_bug_classes": [
+        {
+          "bug_class": "out-of-bounds-read",
+          "count": 12
+        },
+        {
+          "bug_class": "assumed-memory-bug",
+          "count": 8
+        },
+        {
+          "bug_class": "null-pointer-dereference",
+          "count": 4
+        },
+        {
+          "bug_class": "out-of-bounds-write",
+          "count": 3
+        },
+        {
+          "bug_class": "classic-buffer-overflow",
+          "count": 3
+        },
+        {
+          "bug_class": "memory-corruption-unspecified",
+          "count": 2
+        }
+      ],
+      "protocol_hits": {
+        "IP stack": 26,
+        "MAC": 1
+      },
+      "vendor_disclosures": {
+        "MediaTek": 4,
+        "Qualcomm": 29,
+        "Samsung": 1
+      }
+    },
+    "Local/IPC & Diagnostic": {
+      "count": 24,
+      "percent_of_filtered_dataset": 4.1,
+      "impact": {
+        "Write Primitive": 17,
+        "DoS": 7
+      },
+      "write_capable_or_rce": {
+        "count": 17,
+        "percent_within_scope": 70.8
+      },
+      "bug_family": {
+        "Bounds write / overflow": 15,
+        "Bounds read": 1,
+        "Lifetime / pointer misuse": 2,
+        "Assumed memory bug": 6
+      },
+      "top_bug_classes": [
+        {
+          "bug_class": "buffer-overflow",
+          "count": 7
+        },
+        {
+          "bug_class": "memory-corruption-unspecified",
+          "count": 4
+        },
+        {
+          "bug_class": "assumed-memory-bug",
+          "count": 2
+        },
+        {
+          "bug_class": "out-of-bounds-write",
+          "count": 2
+        },
+        {
+          "bug_class": "array-index-write",
+          "count": 2
+        },
+        {
+          "bug_class": "classic-buffer-overflow",
+          "count": 2
+        }
+      ],
+      "protocol_hits": {},
+      "vendor_disclosures": {
+        "MediaTek": 1,
+        "Qualcomm": 23
+      }
+    },
+    "Unknown": {
+      "count": 197,
+      "percent_of_filtered_dataset": 33.4,
+      "impact": {
+        "Write Primitive": 61,
+        "DoS": 136
+      },
+      "write_capable_or_rce": {
+        "count": 61,
+        "percent_within_scope": 31.0
+      },
+      "bug_family": {
+        "Bounds write / overflow": 51,
+        "Bounds read": 19,
+        "Null dereference": 10,
+        "Lifetime / pointer misuse": 10,
+        "Assumed memory bug": 107
+      },
+      "top_bug_classes": [
+        {
+          "bug_class": "assumed-memory-bug",
+          "count": 96
+        },
+        {
+          "bug_class": "buffer-overflow",
+          "count": 18
+        },
+        {
+          "bug_class": "out-of-bounds-read",
+          "count": 18
+        },
+        {
+          "bug_class": "out-of-bounds-write",
+          "count": 16
+        },
+        {
+          "bug_class": "memory-corruption-unspecified",
+          "count": 11
+        },
+        {
+          "bug_class": "null-pointer-dereference",
+          "count": 10
+        }
+      ],
+      "protocol_hits": {},
+      "vendor_disclosures": {
+        "Apple": 3,
+        "MediaTek": 16,
+        "Qualcomm": 127,
+        "Samsung": 32,
+        "Unisoc": 19
+      }
+    }
+  },
+  "direction_questions": {
+    "q1_source_beyond_short_vendor_advisory": {
+      "count": 36,
+      "percent": 6.1
+    },
+    "q2_vendor_only_vs_research_source": {
+      "research_enriched": 36,
+      "vendor_or_database_only": 554
+    },
+    "q3_triggering_protocol_or_input_surface": {
+      "known_primary_scope": {
+        "count": 393,
+        "percent": 66.6
+      },
+      "specific_protocol": {
+        "count": 233,
+        "percent": 39.5
+      }
+    },
+    "q4_specific_memory_bug_class": {
+      "count": 295,
+      "percent": 50.0
+    },
+    "q5_public_crash_or_failure_reproduction": {
+      "count": 20,
+      "percent": 3.4
+    },
+    "q6_public_attacker_controlled_primitive": {
+      "count": 21,
+      "percent": 3.6
+    },
+    "q7_public_control_flow_or_arbitrary_execution": {
+      "count": 11,
+      "percent": 1.9
+    },
+    "q8_patch_reconstruction": {
+      "patch_identifier": {
+        "count": 96,
+        "percent": 16.3
+      },
+      "firmware_range": {
+        "count": 219,
+        "percent": 37.1
+      },
+      "public_patch_diff": {
+        "count": 0,
+        "percent": 0.0
+      }
+    },
+    "q9_scope_label_basis": {
+      "manual_annotation_plus_description": 74,
+      "description_keyword_inference": 321,
+      "unknown": 195
+    },
+    "q10_reliable_figures": [
+      "publication trend by impact",
+      "impact by primary scope",
+      "memory-bug families by primary scope",
+      "overall memory-bug class distribution",
+      "measured public-evidence coverage",
+      "RAT hit counts (multi-valued, not mutually exclusive)",
+      "vendor disclosure counts with an explicit non-ranking caveat"
+    ]
+  },
+  "taxonomy_notes": {
+    "RCE": "Requires public confirmation of compromise or demonstrated control-flow/code execution.",
+    "Write Primitive": "Attacker-influenced input causes a write-capable memory effect. Absolute address/value control is not required: a deterministic single-byte or null-byte overwrite qualifies even when the immediate observed outcome is an assertion or baseband crash. This class does not assert code execution.",
+    "DoS": "Explicit read/crash memory-safety class or assumed memory bug without public write-capable corruption.",
+    "Assumed memory bug": "No read/write/lifetime primitive is public. This family includes both records with only generic memory-corruption wording and records retained under the missing-memory-evidence assumption. Impact remains independent: an otherwise confirmed RCE stays RCE; other unknown-primitive cases receive conservative DoS.",
+    "E1": "A vendor or CVE record states the weakness or potential outcome.",
+    "E2": "Public evidence reproduces the failure or identifies a function/message-level root cause.",
+    "E3": "Public evidence characterizes an attacker-relevant memory primitive.",
+    "E4": "Public evidence demonstrates control-flow redirection.",
+    "E5": "Public evidence demonstrates or explicitly confirms arbitrary code execution under stated attack conditions.",
+    "evidence_independence": "Evidence level measures information completeness, not impact or criticality.",
+    "scope": "Primary attack surface is separate from multi-valued RAT and protocol annotations; Multi-RAT is not a catch-all scope.",
+    "scope_comparison": "Counts measure disclosures in this corpus, not per-device or per-line-of-code vulnerability rates.",
+    "missing_memory_evidence": "If a record is not explicitly non-memory and no public memory-safety root cause exists, retain it in the Assumed memory bug family. Use conservative DoS unless independent public evidence confirms RCE."
+  }
+}

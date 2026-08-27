@@ -1,0 +1,325 @@
+{
+  "schema_version": "2.9",
+  "audit_date": "2026-08-27",
+  "runtime_network_access": false,
+  "policy": {
+    "sources": "Only identifier-specific canonical CVE links and manually content-reviewed technical/vendor documents are admitted as evidence sources.",
+    "input_reference_candidates": "URLs inherited from source JSON are retained for traceability but are unverified and never used to justify classification or evidence levels.",
+    "online_checked_meaning": "content-reviewed denotes a manual content/relevance review on audit_date; canonical-link-generated does not claim an HTTP check."
+  },
+  "counts": {
+    "records": 622,
+    "records_with_canonical_nvd_source": 622,
+    "content_reviewed_source_associations": 35,
+    "input_reference_candidates": 816,
+    "candidate_mapping_signals": {
+      "conflicting-identifier-in-url": 2,
+      "identifier-present-in-url": 42,
+      "no-identifier-in-url": 772
+    }
+  },
+  "obvious_conflicting_input_mappings": [
+    {
+      "cve_id": "CVE-2016-4030",
+      "url": "https://github.com/ud2/advisories/tree/master/android/samsung/nocve-2016-0004",
+      "inferred_type": "other",
+      "mapping_signal": "conflicting-identifier-in-url",
+      "cve_ids_in_url": [
+        "CVE-2016-0004"
+      ],
+      "status": "unverified-input-reference-not-used-as-evidence"
+    },
+    {
+      "cve_id": "CVE-2025-57834",
+      "url": "https://semiconductor.samsung.com/support/quality-support/product-security-updates/cve-2025-54328/",
+      "inferred_type": "vendor-advisory",
+      "mapping_signal": "conflicting-identifier-in-url",
+      "cve_ids_in_url": [
+        "CVE-2025-54328"
+      ],
+      "status": "unverified-input-reference-not-used-as-evidence"
+    }
+  ],
+  "content_reviewed_source_associations": [
+    {
+      "cve_id": "CVE-2010-3832",
+      "title": "About the security content of iOS 4.2",
+      "url": "https://support.apple.com/en-ca/103588",
+      "type": "vendor-advisory",
+      "role": "vendor-description-and-impact",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2010-3832",
+      "title": "Baseband Attacks: Remote Exploitation of Memory Corruptions in Cellular Protocol Stacks",
+      "url": "https://www.usenix.org/conference/woot12/workshop-program/presentation/weinmann",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2015-8546",
+      "title": "Breaking Band: Reverse Engineering and Exploiting the Shannon Baseband",
+      "url": "https://comsecuris.com/slides/recon2016-breaking_band.pdf",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2020-25279",
+      "title": "FirmWire: Transparent Dynamic Analysis for Cellular Baseband Firmware",
+      "url": "https://doi.org/10.14722/ndss.2022.23136",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2021-25478",
+      "title": "FirmWire: Transparent Dynamic Analysis for Cellular Baseband Firmware",
+      "url": "https://doi.org/10.14722/ndss.2022.23136",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2021-25479",
+      "title": "FirmWire: Transparent Dynamic Analysis for Cellular Baseband Firmware",
+      "url": "https://doi.org/10.14722/ndss.2022.23136",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2021-32484",
+      "title": "CVE-2021-32484: MediaTek GSM RRM E-UTRAN Heap Buffer Overflow",
+      "url": "https://labs.taszk.io/blog/post/65_mtk_hof_1/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2021-32484",
+      "title": "Exploiting CSN.1 Bugs in MediaTek Basebands",
+      "url": "https://labs.taszk.io/articles/post/mtk_baseband_csn1_exploitation/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2021-32485",
+      "title": "CVE-2021-32485: MediaTek GSM RRM UTRAN Heap Buffer Overflow",
+      "url": "https://labs.taszk.io/blog/post/66_mtk_hof_2/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2021-32485",
+      "title": "Exploiting CSN.1 Bugs in MediaTek Basebands",
+      "url": "https://labs.taszk.io/articles/post/mtk_baseband_csn1_exploitation/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2021-32486",
+      "title": "CVE-2021-32486: MediaTek GSM RRM Extended-EARFCN Heap Buffer Overflow",
+      "url": "https://labs.taszk.io/blog/post/67_mtk_hof_3/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2021-32486",
+      "title": "Exploiting CSN.1 Bugs in MediaTek Basebands",
+      "url": "https://labs.taszk.io/articles/post/mtk_baseband_csn1_exploitation/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2021-32487",
+      "title": "CVE-2021-32487: MediaTek GSM RRM Channel-Release Heap Buffer Overflow",
+      "url": "https://labs.taszk.io/blog/post/68_mtk_hof_4/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2021-32487",
+      "title": "Exploiting CSN.1 Bugs in MediaTek Basebands",
+      "url": "https://labs.taszk.io/articles/post/mtk_baseband_csn1_exploitation/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2021-25477",
+      "title": "FirmWire: Transparent Dynamic Analysis for Cellular Baseband Firmware",
+      "url": "https://doi.org/10.14722/ndss.2022.23136",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2022-20170",
+      "title": "Over the Air, Under the Radar: Attacking and Securing the Pixel Modem",
+      "url": "https://i.blackhat.com/BH-US-23/Presentations/US-23-Karimi-Over-the-Air-Under-the-Radar.pdf",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2022-21744",
+      "title": "CVE-2022-21744: MediaTek Baseband GPRS PNCD Heap Buffer Overflow",
+      "url": "https://labs.taszk.io/blog/post/84_mtk_pncd_bof/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2022-21744",
+      "title": "Full Chain Baseband Exploits, Part 2",
+      "url": "https://labs.taszk.io/articles/post/full_chain_bb_part2/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2023-24033",
+      "title": "Multiple Internet to Baseband Remote Code Execution Vulnerabilities in Exynos Modems",
+      "url": "https://projectzero.google/2023/03/multiple-internet-to-baseband-remote-rce.html",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2023-26497",
+      "title": "Multiple Internet to Baseband Remote Code Execution Vulnerabilities in Exynos Modems",
+      "url": "https://projectzero.google/2023/03/multiple-internet-to-baseband-remote-rce.html",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2023-26496",
+      "title": "Multiple Internet to Baseband Remote Code Execution Vulnerabilities in Exynos Modems",
+      "url": "https://projectzero.google/2023/03/multiple-internet-to-baseband-remote-rce.html",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2023-26498",
+      "title": "Multiple Internet to Baseband Remote Code Execution Vulnerabilities in Exynos Modems",
+      "url": "https://projectzero.google/2023/03/multiple-internet-to-baseband-remote-rce.html",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2023-21517",
+      "title": "CVE-2023-21517: Samsung Baseband LTE ESM TFT Heap Buffer Overflow",
+      "url": "https://labs.taszk.io/blog/post/85_ss_esm_bof/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2023-41111",
+      "title": "CVE-2023-41111: Samsung Baseband RLC Data Re-Assembly Buffer Overflow",
+      "url": "https://labs.taszk.io/blog/post/93_rlc_bof/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2023-41111",
+      "title": "Exploiting New Attack Surfaces in Radio Layer 2 for Baseband RCE",
+      "url": "https://labs.taszk.io/articles/post/there_will_be_bugs/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2023-41111",
+      "title": "Full Chain Baseband Exploits, Part 1",
+      "url": "https://labs.taszk.io/articles/post/full_chain_bb_part1/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2023-41112",
+      "title": "CVE-2023-41112: Samsung Baseband RLC Data Re-Assembly Heap Buffer Overflow",
+      "url": "https://labs.taszk.io/blog/post/94_rlc_heap_bof/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2023-41112",
+      "title": "Exploiting New Attack Surfaces in Radio Layer 2 for Baseband RCE",
+      "url": "https://labs.taszk.io/articles/post/there_will_be_bugs/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2023-41112",
+      "title": "Full Chain Baseband Exploits, Part 1",
+      "url": "https://labs.taszk.io/articles/post/full_chain_bb_part1/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2024-20039",
+      "title": "BaseBridge: Bridging the Gap Between Over-the-Air and Emulation Testing",
+      "url": "https://doi.org/10.1109/SP61157.2025.00142",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2024-20150",
+      "title": "BaseBridge: Bridging the Gap Between Over-the-Air and Emulation Testing",
+      "url": "https://doi.org/10.1109/SP61157.2025.00142",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2024-20154",
+      "title": "BaseBridge: Bridging the Gap Between Over-the-Air and Emulation Testing",
+      "url": "https://doi.org/10.1109/SP61157.2025.00142",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2025-20725",
+      "title": "CVE-2025-20725: MediaTek Baseband Heap Overflow in inet_msg_unpack_addr",
+      "url": "https://labs.taszk.io/blog/post/101_mtk_arbitrary_heap_inet_msg_unpack_addr/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2025-20726",
+      "title": "CVE-2025-20726: MediaTek Baseband Heap Overflow in inet_msg_unpack_uri_with_len",
+      "url": "https://labs.taszk.io/blog/post/103_heap_inet_msg_unpack_uri_with_len/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    },
+    {
+      "cve_id": "CVE-2025-20727",
+      "title": "CVE-2025-20727: MediaTek Baseband Heap Overflow in SIP Authentication-Info",
+      "url": "https://labs.taszk.io/blog/post/104_heap_inet_param_struct_free_fn/",
+      "type": "research",
+      "role": "technical-evidence",
+      "checked_date": "2026-08-27"
+    }
+  ]
+}

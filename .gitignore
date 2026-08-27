@@ -1,0 +1,10 @@
+.venv/
+.direnv/
+.cache/
+__pycache__/
+regenerated/
+result
+result-*
+
+# Paper source is maintained by the surrounding manuscript repository.
+cem_baseband_paper.tex
