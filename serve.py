@@ -69,8 +69,8 @@ def main() -> None:
         {"web_root": web_root, "data_root": data_root},
     )
     server = ThreadingHTTPServer((args.host, args.port), handler)
-    print(f"Baseband CVE Explorer: http://{args.host}:{args.port}")
-    print(f"Generated data: {data_root}")
+    print(f"Baseband CVE Explorer: http://{args.host}:{args.port}", flush=True)
+    print(f"Generated data: {data_root}", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

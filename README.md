@@ -19,6 +19,9 @@ The default app performs both stages automatically:
 2. `enrich.py` reads those fresh collections plus `cve_table.typ` and writes the
    datasets, audits, manifest, CSV, and figures to `outputs/`.
 
+During the bulk scan it prints progress every 25,000 CVE records, including
+elapsed time, candidate count, and records per second.
+
 Both generated directories are ignored by Git. Pass enrichment arguments after
 `--`, for example:
 

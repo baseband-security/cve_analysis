@@ -50,11 +50,13 @@
             runtimeInputs = [ python ];
             text = ''
               fetched_dir="''${BASEBAND_CVE_FETCH_DIR:-$PWD/fetched_json}"
+              echo "[pipeline 1/2] Acquiring vendor JSON from the pinned CVE List V5 snapshot"
               python ${self}/fetch_json.py \
                 --cve-list-dir ${cvelistV5} \
                 --merge-dir ${self}/no-checked-in-json \
                 --output-dir "$fetched_dir" \
                 --offline
+              echo "[pipeline 2/2] Enriching and validating the dataset"
               exec python ${self}/enrich.py --input-dir "$fetched_dir" "$@"
             '';
           };
@@ -72,14 +74,17 @@
               fetched_dir="''${BASEBAND_CVE_FETCH_DIR:-$PWD/fetched_json}"
               output_dir="''${BASEBAND_CVE_OUTPUT_DIR:-$PWD/outputs}"
               export MPLCONFIGDIR="''${MPLCONFIGDIR:-$PWD/.cache/matplotlib}"
+              echo "[BandScope 1/3] Acquiring vendor JSON from the pinned CVE List V5 snapshot"
               python ${self}/fetch_json.py \
                 --cve-list-dir ${cvelistV5} \
                 --merge-dir ${self}/no-checked-in-json \
                 --output-dir "$fetched_dir" \
                 --offline
+              echo "[BandScope 2/3] Enriching, plotting, and validating the dataset"
               python ${self}/enrich.py \
                 --input-dir "$fetched_dir" \
                 --output "$output_dir"
+              echo "[BandScope 3/3] Starting the local explorer"
               exec python ${self}/serve.py --data-dir "$output_dir" "$@"
             '';
           };

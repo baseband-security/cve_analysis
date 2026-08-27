@@ -717,6 +717,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--request-delay", type=float, default=0.15)
     parser.add_argument("--retries", type=int, default=3)
     parser.add_argument(
+        "--progress-every",
+        type=int,
+        default=25_000,
+        help="print scan progress every N CVE records; use 0 to disable (default: 25000)",
+    )
+    parser.add_argument(
         "--strict-fetch", action="store_true",
         help="fail instead of auditing CVE IDs whose canonical record cannot be fetched",
     )
@@ -729,6 +735,15 @@ def main() -> int:
     selected = set(VENDORS) if not requested or "all" in requested else requested
     if args.since_year > args.until_year:
         raise SystemExit("--since-year must not be after --until-year")
+    if args.progress_every < 0:
+        raise SystemExit("--progress-every must be non-negative")
+
+    source_description = args.cve_list_dir or args.cve_list_zip or "no bulk source"
+    print(
+        f"[acquire] source={source_description} years={args.since_year}-{args.until_year} "
+        f"vendors={','.join(sorted(selected))}",
+        flush=True,
+    )
 
     candidates: dict[tuple[str, str], Candidate] = {}
     canonical: dict[str, dict[str, Any]] = {}
@@ -767,8 +782,16 @@ def main() -> int:
         iterator = iter_cve_list_zip(args.cve_list_zip)
 
     preselected_ids = {cve_id for _, cve_id in candidates}
+    scan_started = time.monotonic()
     for record in iterator:
         scanned += 1
+        if args.progress_every and scanned % args.progress_every == 0:
+            elapsed = max(time.monotonic() - scan_started, 0.001)
+            print(
+                f"[acquire] scanned={scanned:,} candidates={len(candidates):,} "
+                f"elapsed={elapsed:.1f}s rate={scanned / elapsed:,.0f}/s",
+                flush=True,
+            )
         cve_id = record_id(record)
         if record.get("cveMetadata", {}).get("state") not in {None, "PUBLISHED"}:
             continue
@@ -916,7 +939,12 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    print(f"Official CVE records scanned: {scanned}")
+    elapsed = max(time.monotonic() - scan_started, 0.001)
+    print(
+        f"[acquire] scan complete: {scanned:,} records in {elapsed:.1f}s "
+        f"({scanned / elapsed:,.0f}/s)",
+        flush=True,
+    )
     for vendor in sorted(selected):
         old_count = len(existing[vendor])
         new_count = audit["output_counts"][vendor]
