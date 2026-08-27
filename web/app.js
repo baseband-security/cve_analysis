@@ -54,8 +54,13 @@ function evidenceClass(record) {
   return "evidence-none";
 }
 
+function bugClassLabel(record) {
+  return record.bug_class === "low-information-cve" ? "Low information CVE" : record.bug_class;
+}
+
 function rootCause(record) {
-  return record.manual_enrichment?.root_cause || record.cwe || record.bug_class || record.excluded_reason || "Not publicly specified";
+  return record.manual_enrichment?.root_cause || record.cwe || record.excluded_reason ||
+    (record.bug_class === "low-information-cve" ? "Not publicly specified" : record.bug_class) || "Not publicly specified";
 }
 
 function chipsets(record) {
@@ -163,7 +168,7 @@ function currentDataset() {
 
 function searchableText(record) {
   return [record.cve_id, record.vendor, record.description, record.cwe, record.impact,
-    record.bug_class, record.bug_family, record.primary_scope, record.reachability,
+    bugClassLabel(record), record.bug_family, record.primary_scope, record.reachability,
     record.evidence?.summary, record.manual_enrichment?.protocol,
     rootCause(record), ...chipsets(record), ...(record.protocols || []), ...(record.rats || [])]
     .filter(Boolean).join(" ").toLowerCase();
@@ -224,7 +229,7 @@ function openDrawer(record, updateHash = true) {
   const evidence = record.evidence || {};
   const definitions = [
     ["Vendor", record.vendor], ["Published", record.date_published],
-    ["Bug class", record.bug_class], ["Bug family", record.bug_family],
+    ["Bug class", bugClassLabel(record)], ["Bug family", record.bug_family],
     ["Primary scope", record.primary_scope], ["RAT", (record.rats || []).join(", ")],
     ["Protocols", (record.protocols || []).join(", ")], ["Reachability", record.reachability],
     ["Primitive control", record.primitive_control], ["Patch ID", record.patch?.identifier],

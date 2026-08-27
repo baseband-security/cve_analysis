@@ -85,24 +85,24 @@ BUG_FAMILY_BOUNDS_WRITE = "Bounds write / overflow"
 BUG_FAMILY_BOUNDS_READ = "Bounds read"
 BUG_FAMILY_NULL = "Null dereference"
 BUG_FAMILY_LIFETIME_POINTER = "Lifetime / pointer misuse"
-BUG_FAMILY_ASSUMED = "Assumed memory bug"
+BUG_FAMILY_LOW_INFORMATION = "Low information CVE"
 BUG_FAMILY_ORDER = (
     BUG_FAMILY_BOUNDS_WRITE,
     BUG_FAMILY_BOUNDS_READ,
     BUG_FAMILY_NULL,
     BUG_FAMILY_LIFETIME_POINTER,
-    BUG_FAMILY_ASSUMED,
+    BUG_FAMILY_LOW_INFORMATION,
 )
 
 
 def bug_family(bug_class: str) -> str:
     """Collapse precise classes into families suitable for surface comparison."""
     if bug_class in {
-        "assumed-memory-bug",
+        "low-information-cve",
         "memory-corruption-unspecified",
         "unknown-memory-operation-rce",
     }:
-        return BUG_FAMILY_ASSUMED
+        return BUG_FAMILY_LOW_INFORMATION
     if bug_class in {
         "out-of-bounds-write",
         "heap-buffer-overflow",
@@ -892,7 +892,7 @@ def classify_memory(text: str, cve_id: str) -> tuple[str | None, str | None, str
 
     # A write primitive requires an explicit write/overflow/lifetime signal.
     # Bare "memory corruption" wording does not identify a primitive, so it is
-    # grouped with assumed memory bugs and receives conservative DoS impact.
+    # grouped with low-information CVEs and receives conservative DoS impact.
     # Specific operations always win.
     if write_class:
         return IMPACT_WRITE, write_class, ""
@@ -905,7 +905,7 @@ def classify_memory(text: str, cve_id: str) -> tuple[str | None, str | None, str
     # Project policy: absence of a public root cause is treated as an assumed
     # memory bug rather than an exclusion.  The impact remains the conservative
     # DoS class because no write-capable primitive or execution is public.
-    return IMPACT_DOS, "assumed-memory-bug", ""
+    return IMPACT_DOS, "low-information-cve", ""
 
 
 def primitive_control(text: str, impact: str) -> str:
@@ -1071,8 +1071,8 @@ def enrich_record(raw: RawRecord, typst: dict[str, Any]) -> tuple[dict[str, Any]
         "bug_class": bug_class,
         "bug_family": bug_family(bug_class),
         "memory_safety_basis": (
-            "assumed_when_public_evidence_absent"
-            if bug_class in {"assumed-memory-bug", "unknown-memory-operation-rce"}
+            "low_information_cve"
+            if bug_class in {"low-information-cve", "unknown-memory-operation-rce"}
             else "explicit_public_memory_safety_evidence"
         ),
         "primitive_control": primitive_control(combined, impact),
@@ -1140,7 +1140,7 @@ def build_summary(
         r["bug_class"] not in {
             "memory-corruption-unspecified",
             "unknown-memory-operation-rce",
-            "assumed-memory-bug",
+            "low-information-cve",
         }
         for r in records
     )
@@ -1148,7 +1148,7 @@ def build_summary(
         r["memory_safety_basis"] == "explicit_public_memory_safety_evidence"
         for r in records
     )
-    assumed_memory = total - explicit_memory
+    low_information = total - explicit_memory
     external = sum(r["source_beyond_vendor_advisory"] for r in records)
     reproduced = sum(r["evidence"]["reproduced_failure"] for r in records)
     primitive = sum(r["evidence"]["primitive_characterized"] for r in records)
@@ -1206,9 +1206,9 @@ def build_summary(
             "count": explicit_memory,
             "percent": percentage(explicit_memory, total),
         },
-        "assumed_memory_bug": {
-            "count": assumed_memory,
-            "percent": percentage(assumed_memory, total),
+        "low_information_cve": {
+            "count": low_information,
+            "percent": percentage(low_information, total),
         },
         "source_beyond_vendor_advisory": {"count": external, "percent": percentage(external, total)},
         "public_reproduced_failure": {"count": reproduced, "percent": percentage(reproduced, total)},
@@ -1291,18 +1291,18 @@ def build_summary(
                 "overwrite qualifies even when the immediate observed outcome is an assertion or "
                 "baseband crash. This class does not assert code execution."
             ),
-            "DoS": "Explicit read/crash memory-safety class or assumed memory bug without public write-capable corruption.",
-            "Assumed memory bug": (
+            "DoS": "Explicit read/crash memory-safety class or low-information CVE without public write-capable corruption.",
+            "Low information CVE": (
                 "No read/write/lifetime primitive is public. This family includes both records "
                 "with only generic memory-corruption wording and records retained under the "
-                "missing-memory-evidence assumption. Impact remains independent: an otherwise "
+                "low-information policy. Impact remains independent: an otherwise "
                 "confirmed RCE stays RCE; other unknown-primitive cases receive conservative DoS."
             ),
             "evidence_bands": EVIDENCE_BAND_SUMMARIES,
             "evidence_independence": "Evidence depth measures information completeness, not impact or criticality.",
             "scope": "Primary attack surface is separate from multi-valued RAT and protocol annotations; Multi-RAT is not a catch-all scope.",
             "scope_comparison": "Counts measure disclosures in this corpus, not per-device or per-line-of-code vulnerability rates.",
-            "missing_memory_evidence": "If a record is not explicitly non-memory and no public memory-safety root cause exists, retain it in the Assumed memory bug family. Use conservative DoS unless independent public evidence confirms RCE.",
+            "missing_memory_evidence": "If a record is not explicitly non-memory and no public memory-safety root cause exists, retain it in the Low information CVE family. Use conservative DoS unless independent public evidence confirms RCE.",
         },
     }
 
@@ -1331,14 +1331,14 @@ def build_rce_audit(
                     if record["impact"] == IMPACT_RCE
                     else "demoted: public evidence supports a write primitive but not demonstrated RCE"
                     if record["impact"] == IMPACT_WRITE
-                    else "demoted: retained as assumed memory bug; no public RCE or memory root-cause evidence"
-                    if record["bug_class"] == "assumed-memory-bug"
+                    else "demoted: retained as a low-information CVE; no public RCE or memory root-cause evidence"
+                    if record["bug_class"] == "low-information-cve"
                     else "demoted: public evidence supports a memory-safety crash/read outcome"
                 ),
                 "reason": (
                     "No public memory-safety root cause; retained under the declared missing-evidence "
                     "memory-bug assumption with conservative DoS impact."
-                    if record["bug_class"] == "assumed-memory-bug"
+                    if record["bug_class"] == "low-information-cve"
                     else record["evidence"]["summary"]
                 ),
                 "sources": output_sources(sources),
@@ -1467,7 +1467,7 @@ def validate_outputs(
     assert all(
         record["impact"] == IMPACT_DOS
         for record in records
-        if record["bug_class"] == "assumed-memory-bug"
+        if record["bug_class"] == "low-information-cve"
     )
     assert all(
         record["impact"] == IMPACT_DOS
@@ -1519,7 +1519,9 @@ def write_csv(path: Path, records: list[dict[str, Any]]) -> None:
                 "scopes": "; ".join(record["scopes"]),
                 "rats": "; ".join(record["rats"]),
                 "protocols": "; ".join(record["protocols"]),
-                "root_cause": record["manual_enrichment"]["root_cause"] or record["cwe"] or record["bug_class"],
+                "root_cause": record["manual_enrichment"]["root_cause"] or record["cwe"] or (
+                    "" if record["bug_class"] == "low-information-cve" else record["bug_class"]
+                ),
                 "affected_chipsets": "; ".join(record["affected_chipsets"]),
                 "evidence_band": record["evidence"]["band"],
                 "source_urls": "; ".join(item["url"] for item in record["sources"]),
@@ -1579,7 +1581,7 @@ def plot_outputs(records: list[dict[str, Any]], output: Path) -> None:
         BUG_FAMILY_BOUNDS_READ: "#ef8a62",
         BUG_FAMILY_NULL: "#fddbc7",
         BUG_FAMILY_LIFETIME_POINTER: "#4393c3",
-        BUG_FAMILY_ASSUMED: "#cccccc",
+        BUG_FAMILY_LOW_INFORMATION: "#cccccc",
     }
     left = [0] * len(scopes)
     fig, ax = plt.subplots(figsize=(9, 5.2))
@@ -1696,7 +1698,7 @@ def run(
         "schema_version": SCHEMA_VERSION,
         "analysis_release": "evidence-aware-taxonomy-v3.0",
         "source_audit_date": SOURCE_AUDIT_DATE,
-        "description": "Assumption-inclusive, evidence-aware baseband memory-safety CVE dataset.",
+        "description": "Low-information-inclusive, evidence-aware baseband memory-safety CVE dataset.",
         "implementation": {
             "enrich.py": {"sha256": sha256_file(Path(__file__))},
             "policy": (
@@ -1721,7 +1723,7 @@ def run(
             "all_checks_passed": True,
             "unique_ids": True,
             "included_excluded_disjoint": True,
-            "assumed_memory_bugs_receive_conservative_dos": True,
+            "low_information_cves_receive_conservative_dos": True,
             "retained_rces_equal_curated_verified_set": True,
             "all_retained_rces_have_research_sources": True,
             "all_legacy_rce_candidates_have_public_sources": True,

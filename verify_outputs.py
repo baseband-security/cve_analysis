@@ -22,7 +22,7 @@ EXPECTED_BUG_FAMILY = {
     "Bounds read": 63,
     "Null dereference": 28,
     "Lifetime / pointer misuse": 23,
-    "Assumed memory bug": 295,
+    "Low information CVE": 295,
 }
 EXPECTED_SCOPE = {
     "Cellular Control Plane": 220,
@@ -119,12 +119,12 @@ def main() -> None:
     assert Counter(record["primary_scope"] for record in records) == Counter(EXPECTED_SCOPE)
     assert Counter(record["memory_safety_basis"] for record in records) == Counter({
         "explicit_public_memory_safety_evidence": 315,
-        "assumed_when_public_evidence_absent": 275,
+        "low_information_cve": 275,
     })
     assert all(
         record["impact"] == "DoS"
         for record in records
-        if record["bug_class"] == "assumed-memory-bug"
+        if record["bug_class"] == "low-information-cve"
     )
     assert all(
         record["impact"] == "DoS"
