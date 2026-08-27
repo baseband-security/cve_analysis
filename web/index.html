@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Explore the generated evidence-aware baseband CVE dataset.">
+    <title>BandScope — Baseband CVE Explorer</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div class="noise" aria-hidden="true"></div>
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="BandScope home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span>BAND<span>SCOPE</span></span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#overview">Overview</a>
+        <a href="#dataset">Dataset</a>
+        <a href="#methodology">Methodology</a>
+      </nav>
+      <div class="release-pill"><span></span><b id="releaseLabel">Loading artifact</b></div>
+    </header>
+
+    <main id="top">
+      <section class="hero" id="overview">
+        <div class="hero-copy">
+          <p class="eyebrow">Evidence-aware vulnerability intelligence</p>
+          <h1>The public record of<br><em>baseband memory safety.</em></h1>
+          <p class="hero-lede">Inspect every retained CVE, trace its evidence, and compare attack surfaces without mistaking disclosure counts for vulnerability rates.</p>
+          <div class="hero-actions">
+            <a class="button primary" href="#dataset">Explore the dataset <span>↘</span></a>
+            <button class="button ghost" id="exportButton" type="button">Export filtered CSV</button>
+          </div>
+        </div>
+        <div class="signal-stage" aria-hidden="true">
+          <div class="orbit orbit-one"></div>
+          <div class="orbit orbit-two"></div>
+          <div class="orbit orbit-three"></div>
+          <div class="signal-core"><span>OTA</span><b>590</b><small>records</small></div>
+          <div class="signal-node node-one">RCE</div>
+          <div class="signal-node node-two">IMS</div>
+          <div class="signal-node node-three">5G</div>
+        </div>
+      </section>
+
+      <section class="metric-strip" aria-label="Dataset summary">
+        <article><span>01</span><strong id="metricIncluded">—</strong><p>Retained memory-safety CVEs</p></article>
+        <article><span>02</span><strong id="metricRce">—</strong><p>Evidence-backed RCEs</p></article>
+        <article><span>03</span><strong id="metricExplicit">—</strong><p>Explicit memory evidence</p></article>
+        <article><span>04</span><strong id="metricYears">—</strong><p>Years of disclosures</p></article>
+      </section>
+
+      <section class="dashboard section-shell">
+        <div class="section-heading">
+          <div><p class="eyebrow">Corpus overview</p><h2>Disclosure patterns,<br>not vendor rankings.</h2></div>
+          <p>Every view is computed in your browser from the JSON produced by <code>enrich.py</code>. Hover or focus marks for exact counts.</p>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="panel trend-panel">
+            <div class="panel-heading"><div><span>Timeline</span><h3>CVEs by year and impact</h3></div><div class="legend"><i class="rce"></i>RCE <i class="write"></i>Write <i class="dos"></i>DoS</div></div>
+            <div id="trendChart" class="trend-chart" role="img" aria-label="Stacked bar chart of CVEs by year and impact"></div>
+          </article>
+
+          <article class="panel impact-panel">
+            <div class="panel-heading"><div><span>Impact</span><h3>Retained outcomes</h3></div></div>
+            <div class="donut-wrap">
+              <div id="impactDonut" class="donut"><div><strong>590</strong><span>CVEs</span></div></div>
+              <div id="impactLegend" class="donut-legend"></div>
+            </div>
+          </article>
+
+          <article class="panel vendor-panel">
+            <div class="panel-heading"><div><span>Disclosure source</span><h3>Records by vendor</h3></div></div>
+            <div id="vendorBars" class="bar-list"></div>
+          </article>
+
+          <article class="panel evidence-panel">
+            <div class="panel-heading"><div><span>Evidence ladder</span><h3>Public technical depth</h3></div><button class="text-button" id="evidenceHelp" type="button">How to read ↗</button></div>
+            <div id="evidenceLadder" class="evidence-ladder"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="explorer section-shell" id="dataset">
+        <div class="section-heading compact">
+          <div><p class="eyebrow">Interactive records</p><h2>Inspect the corpus.</h2></div>
+          <p id="resultSummary" aria-live="polite">Loading records…</p>
+        </div>
+
+        <div class="dataset-tabs" role="tablist" aria-label="Dataset views">
+          <button class="active" data-view="included" role="tab" aria-selected="true">Retained <b id="includedTabCount">—</b></button>
+          <button data-view="rce" role="tab" aria-selected="false">RCE audit <b id="rceTabCount">—</b></button>
+          <button data-view="excluded" role="tab" aria-selected="false">Excluded <b id="excludedTabCount">—</b></button>
+        </div>
+
+        <div class="filter-bar">
+          <label class="search-field">
+            <span class="sr-only">Search CVE records</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"></circle><path d="m16 16 4 4"></path></svg>
+            <input id="searchInput" type="search" placeholder="Search CVE, protocol, root cause…" autocomplete="off">
+            <kbd>/</kbd>
+          </label>
+          <label><span>Vendor</span><select id="vendorFilter"><option value="">All vendors</option></select></label>
+          <label><span>Impact</span><select id="impactFilter"><option value="">All impacts</option></select></label>
+          <label><span>Evidence</span><select id="evidenceFilter"><option value="">All levels</option></select></label>
+          <label><span>Scope</span><select id="scopeFilter"><option value="">All scopes</option></select></label>
+          <button id="clearFilters" class="clear-button" type="button">Clear</button>
+        </div>
+
+        <div class="table-shell">
+          <table>
+            <thead><tr>
+              <th><button data-sort="cve_id">CVE <span>↕</span></button></th>
+              <th><button data-sort="vendor">Vendor <span>↕</span></button></th>
+              <th><button data-sort="year">Year <span>↕</span></button></th>
+              <th><button data-sort="impact">Impact <span>↕</span></button></th>
+              <th><button data-sort="bug_family">Bug family <span>↕</span></button></th>
+              <th><button data-sort="primary_scope">Primary scope <span>↕</span></button></th>
+              <th><button data-sort="evidence_level">Evidence <span>↕</span></button></th>
+              <th><span class="sr-only">Open details</span></th>
+            </tr></thead>
+            <tbody id="recordRows"></tbody>
+          </table>
+          <div id="emptyState" class="empty-state" hidden><span>∅</span><h3>No matching records</h3><p>Try removing a filter or searching for a broader term.</p></div>
+        </div>
+        <div class="pagination">
+          <button id="previousPage" type="button" aria-label="Previous page">←</button>
+          <span id="pageStatus">Page 1</span>
+          <button id="nextPage" type="button" aria-label="Next page">→</button>
+        </div>
+      </section>
+
+      <section class="methodology section-shell" id="methodology">
+        <div class="section-heading">
+          <div><p class="eyebrow">Reading the evidence</p><h2>Impact and evidence<br>are separate axes.</h2></div>
+          <p>An E1 record may still be exploitable; it simply has less public technical detail. RCE is retained only when public evidence confirms compromise or control-flow execution.</p>
+        </div>
+        <div id="methodCards" class="method-grid"></div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand" href="#top"><span class="brand-mark"><i></i><i></i><i></i><i></i></span><span>BAND<span>SCOPE</span></span></a>
+      <p>Generated locally from the pinned CVE List V5 artifact. Counts measure disclosures, not product security.</p>
+      <a href="#top">Back to top ↑</a>
+    </footer>
+
+    <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+    <aside id="detailDrawer" class="detail-drawer" aria-hidden="true" aria-labelledby="drawerTitle">
+      <button id="closeDrawer" class="drawer-close" type="button" aria-label="Close details">×</button>
+      <div id="drawerContent"></div>
+    </aside>
+
+    <dialog id="evidenceDialog">
+      <button class="dialog-close" type="button" aria-label="Close">×</button>
+      <p class="eyebrow">Evidence model</p>
+      <h2>Technical depth, not severity.</h2>
+      <div id="dialogEvidence"></div>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
