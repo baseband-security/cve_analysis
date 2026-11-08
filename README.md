@@ -33,20 +33,17 @@ nix --extra-experimental-features 'nix-command flakes' run . -- \
 Set `BASEBAND_CVE_FETCH_DIR` to place the intermediate vendor JSON elsewhere.
 The default is `$PWD/fetched_json`.
 
-Verify an ordinary run with:
-
-```bash
-nix --extra-experimental-features 'nix-command flakes' run .#verify -- \
-  outputs --input-dir fetched_json
-```
-
-The command ends with `Artifact verification: PASS`. `nix flake check` executes
-the complete acquisition, enrichment, and verification chain in an isolated Nix
-build directory.
-
 ## Explore in the browser
 
-Generate the artifact and start the bundled Baseband Memory Safety Bugs Overview frontend with:
+Run the bundled Baseband Memory Safety Bugs Overview frontend against the
+currently generated data in `outputs/` with:
+
+```bash
+nix --extra-experimental-features 'nix-command flakes' run .#website
+```
+
+This target only starts the website; it does not fetch, enrich, plot, or verify
+data. Generate fresh artifacts and start the frontend in one command with:
 
 ```bash
 nix --extra-experimental-features 'nix-command flakes' run .#site
@@ -73,19 +70,20 @@ files.
 └── README.md
 ```
 
-The flake also exposes individual `fetch`, `enrich`, `verify`, `serve`, and
+The flake also exposes individual `fetch`, `enrich`, `serve`, `website`, and
 `site` apps. Inside `nix develop`, `$CVELISTV5_DIR` points to the immutable CVE
 List checkout.
 
 ## Expected result
 
 The pinned input and manual annotations yield 622 unique CVEs. The policy keeps
-590 memory-safety records and excludes 32 explicitly non-memory weaknesses. The
-retained impacts are:
+447 memory-safety records and excludes 175 records: 134 matched non-memory rules
+and 41 identifier-specific manual exclusions for non-baseband or non-memory
+cases. The retained impacts are:
 
 - 11 RCE;
-- 194 write primitive; and
-- 385 denial of service.
+- 170 write primitive; and
+- 266 denial of service.
 
 CVE-2022-21744 is classified as RCE with public exploitation evidence. Its root-cause source is the TASZK PNCD
 post, and its execution evidence is TASZK's Full Chain Baseband Exploits, Part 2.

@@ -1,23 +1,5 @@
 #!/usr/bin/env python3
-"""
-Evidence-aware baseband memory-safety CVE enrichment.
-
-This is the Version-B research pipeline.  It deliberately separates:
-
-* public impact claims from demonstrated exploitability;
-* write-capable memory corruption from crash/read-only failures;
-* attack surface (IMS/telephony, SIM, IP, local/diagnostic, cellular control plane) from RAT;
-* evidence stated in a vendor CVE from evidence supplied by a paper or write-up.
-
-The script consumes the four local CVE JSON files plus cve_table.typ.  It emits a
-filtered, memory-safety-only dataset, a machine-readable summary answering the
-Version-B questions, CSV, provenance metadata, and figures.
-
-No network request is made at runtime.  Identifier-specific NVD links are generated
-deterministically; research-source URLs and the small set of strictly verified RCE
-decisions are curated below so that a run is reproducible.  URLs inherited from the
-input JSON are quarantined as unverified candidates and are not evidence.
-"""
+"""Build the reproducible, evidence-aware baseband CVE dataset."""
 
 from __future__ import annotations
 
@@ -26,7 +8,7 @@ import csv
 import hashlib
 import json
 import re
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -52,19 +34,12 @@ IMPACT_WRITE = "Write Primitive"
 IMPACT_DOS = "DoS"
 IMPACT_ORDER = (IMPACT_RCE, IMPACT_WRITE, IMPACT_DOS)
 
-# Evidence bands describe how much is publicly known, not how critical the bug
-# is. The two former middle tiers and two former upper tiers are intentionally
-# merged; the individual boolean observations remain available for analysis.
-EVIDENCE_BANDS = (
-    "advisory-only",
-    "technical-characterization",
-    "exploitation-evidence",
-)
 EVIDENCE_BAND_SUMMARIES = {
     "advisory-only": "A vendor or CVE record states the weakness or potential outcome, without deeper public technical analysis.",
     "technical-characterization": "Public evidence reproduces the failure, identifies a detailed root cause, or characterizes an attacker-relevant memory primitive.",
     "exploitation-evidence": "Public evidence demonstrates control-flow redirection or explicitly confirms arbitrary code execution under stated attack conditions.",
 }
+EVIDENCE_BANDS = tuple(EVIDENCE_BAND_SUMMARIES)
 
 SCOPE_CELLULAR = "Cellular Control Plane"
 SCOPE_TELEPHONY = "IMS/Telephony"
@@ -95,6 +70,52 @@ BUG_FAMILY_ORDER = (
 )
 
 
+# High-recall acquisition false positives that require identifier-specific review.
+MANUAL_EXCLUSIONS: dict[str, str] = {
+    "CVE-2016-3864": "manual blacklist: Android radio-interface-layer privilege issue, not a baseband-firmware memory flaw",
+    "CVE-2016-4030": "manual blacklist: device lockscreen/USB configuration issue; the modem is affected functionality, not the vulnerable execution domain",
+    "CVE-2016-10135": "manual blacklist: exported Android MTKLogger components, not a baseband-firmware flaw",
+    "CVE-2016-10478": "manual blacklist: memory flaw is in the host-side QCRIL component, not baseband firmware",
+    "CVE-2017-9710": "manual blacklist: memory flaw is in a host-side Linux IOCTL interface, not baseband firmware",
+    "CVE-2017-11042": "manual blacklist: access-control flaw is in the Android IMS service, not baseband firmware",
+    "CVE-2017-14880": "manual blacklist: race condition is in the host-side IPA WAN driver, not baseband firmware",
+    "CVE-2018-11277": "manual blacklist: permission flaw is in an Android vendor package, not baseband firmware",
+    "CVE-2018-13900": "manual blacklist: use-after-free is in the host-side IPA driver, not baseband firmware",
+    "CVE-2019-10538": "manual blacklist: issue is explicitly in WLAN HOST, not the baseband execution domain",
+    "CVE-2019-14075": "manual blacklist: null dereference is in the host-side radio interface layer, not baseband firmware",
+    "CVE-2019-16256": "manual blacklist: SIM Toolkit command handling, not a disclosed memory-safety flaw",
+    "CVE-2019-16400": "manual blacklist: Bluetooth AT-command handling causes denial of service without a disclosed memory-safety flaw",
+    "CVE-2019-16401": "manual blacklist: Bluetooth AT-command handling discloses information without a disclosed memory-safety flaw",
+    "CVE-2020-3654": "manual blacklist: memory flaw is explicitly in HLOS data handling, not baseband firmware",
+    "CVE-2020-3673": "manual blacklist: memory flaw is explicitly in HLOS data handling, not baseband firmware",
+    "CVE-2020-11203": "manual blacklist: memory flaw is in the host-side radio interface layer, not baseband firmware",
+    "CVE-2020-11294": "manual blacklist: memory flaw is in the host-side radio interface layer, not baseband firmware",
+    "CVE-2021-1963": "manual blacklist: use-after-free is in the host-side IPA driver, not baseband firmware",
+    "CVE-2020-25858": "manual blacklist: QCMAP web-client issue in hotspot/router user space, not baseband firmware",
+    "CVE-2020-25859": "manual blacklist: non-memory command injection in the QCMAP CLI, not baseband firmware",
+    "CVE-2021-39635": "manual blacklist: permission issue in an Android vendor system service, not an established baseband memory-safety flaw",
+    "CVE-2021-25487": "manual blacklist: memory flaw is in the host-side modem interface driver, not baseband firmware",
+    "CVE-2021-25488": "manual blacklist: memory flaw is in the host-side modem interface driver, not baseband firmware",
+    "CVE-2021-25489": "manual blacklist: format-string flaw is in the host-side modem interface driver, not baseband firmware",
+    "CVE-2021-30265": "manual blacklist: memory flaw is in a host-side kernel IOCTL path, not baseband firmware",
+    "CVE-2022-47485": "manual blacklist: memory flaw is in the Android modem-control device, not baseband firmware",
+    "CVE-2022-48380": "manual blacklist: memory flaw is in the Android modem-control device, not baseband firmware",
+    "CVE-2022-48381": "manual blacklist: memory flaw is in the Android modem-control device, not baseband firmware",
+    "CVE-2022-48389": "manual blacklist: memory flaw is in the Android modem-control device, not baseband firmware",
+    "CVE-2023-24851": "manual blacklist: memory corruption is explicitly in WLAN HOST, not the baseband",
+    "CVE-2023-24854": "manual blacklist: memory corruption is explicitly in WLAN HOST, not the baseband",
+    "CVE-2023-33915": "manual blacklist: missing-permission-check information disclosure, not a memory-safety flaw",
+    "CVE-2023-20827": "manual blacklist: memory flaw is in a local Android IMS service, not baseband firmware",
+    "CVE-2023-21634": "manual blacklist: memory flaw is in the host-side radio interface layer, not baseband firmware",
+    "CVE-2023-52346": "manual blacklist: memory flaw is in a host-side modem driver, not baseband firmware",
+    "CVE-2024-20897": "manual blacklist: non-memory implicit-intent issue in an IMS service, not an established baseband flaw",
+    "CVE-2024-20898": "manual blacklist: non-memory implicit-intent issue in an IMS service, not an established baseband flaw",
+    "CVE-2024-20899": "manual blacklist: non-memory implicit-intent issue in an IMS service, not an established baseband flaw",
+    "CVE-2025-31715": "manual blacklist: command injection in a VoWiFi service, not a memory-safety flaw and not established as baseband execution",
+    "CVE-2025-47383": "manual blacklist: cryptographic configuration weakness, not a memory-safety flaw",
+}
+
+
 def bug_family(bug_class: str) -> str:
     """Collapse precise classes into families suitable for surface comparison."""
     if bug_class in {
@@ -109,7 +130,6 @@ def bug_family(bug_class: str) -> str:
         "stack-buffer-overflow",
         "buffer-overflow",
         "classic-buffer-overflow",
-        "array-index-write",
         "write-what-where",
     }:
         return BUG_FAMILY_BOUNDS_WRITE
@@ -134,12 +154,7 @@ def source(
     *,
     role: str = "technical-evidence",
 ) -> dict[str, str]:
-    """Create a manually reviewed source used as evidence by this pipeline.
-
-    These sources are deliberately distinct from URLs inherited from the input
-    CVE JSON.  A source is placed here only after checking that the document
-    supports the CVE mapping encoded in VERIFIED_RCE or RESEARCH_EVIDENCE.
-    """
+    """Create a manually reviewed evidence source."""
     return {
         "title": title,
         "url": url,
@@ -152,11 +167,7 @@ def source(
 
 
 def nvd_source(cve_id: str) -> dict[str, str]:
-    """Return a stable, identifier-specific database link.
-
-    This is a deterministic canonical-link construction, not a claim that the
-    generator fetched the page.  Runtime generation remains offline.
-    """
+    """Create the canonical NVD link without fetching it."""
     return {
         "title": f"NVD record for {cve_id}",
         "url": f"https://nvd.nist.gov/vuln/detail/{cve_id}",
@@ -168,103 +179,32 @@ def nvd_source(cve_id: str) -> dict[str, str]:
     }
 
 
-SRC_WEINMANN = source(
-    "Baseband Attacks: Remote Exploitation of Memory Corruptions in Cellular Protocol Stacks",
-    "https://www.usenix.org/conference/woot12/workshop-program/presentation/weinmann",
-)
-SRC_PIXEL = source(
-    "Over the Air, Under the Radar: Attacking and Securing the Pixel Modem",
-    "https://i.blackhat.com/BH-US-23/Presentations/US-23-Karimi-Over-the-Air-Under-the-Radar.pdf",
-)
-SRC_BREAKING_BAND = source(
-    "Breaking Band: Reverse Engineering and Exploiting the Shannon Baseband",
-    "https://comsecuris.com/slides/recon2016-breaking_band.pdf",
-)
-SRC_P0 = source(
-    "Multiple Internet to Baseband Remote Code Execution Vulnerabilities in Exynos Modems",
-    "https://projectzero.google/2023/03/multiple-internet-to-baseband-remote-rce.html",
-)
-SRC_FIRMWIRE = source(
-    "FirmWire: Transparent Dynamic Analysis for Cellular Baseband Firmware",
-    "https://doi.org/10.14722/ndss.2022.23136",
-)
-SRC_BASEBRIDGE = source(
-    "BaseBridge: Bridging the Gap Between Over-the-Air and Emulation Testing",
-    "https://doi.org/10.1109/SP61157.2025.00142",
-)
-SRC_TASZK_CSN1 = source(
-    "Exploiting CSN.1 Bugs in MediaTek Basebands",
-    "https://labs.taszk.io/articles/post/mtk_baseband_csn1_exploitation/",
-)
-SRC_TASZK_32484 = source(
-    "CVE-2021-32484: MediaTek GSM RRM E-UTRAN Heap Buffer Overflow",
-    "https://labs.taszk.io/blog/post/65_mtk_hof_1/",
-)
-SRC_TASZK_32485 = source(
-    "CVE-2021-32485: MediaTek GSM RRM UTRAN Heap Buffer Overflow",
-    "https://labs.taszk.io/blog/post/66_mtk_hof_2/",
-)
-SRC_TASZK_32486 = source(
-    "CVE-2021-32486: MediaTek GSM RRM Extended-EARFCN Heap Buffer Overflow",
-    "https://labs.taszk.io/blog/post/67_mtk_hof_3/",
-)
-SRC_TASZK_32487 = source(
-    "CVE-2021-32487: MediaTek GSM RRM Channel-Release Heap Buffer Overflow",
-    "https://labs.taszk.io/blog/post/68_mtk_hof_4/",
-)
-SRC_TASZK_PNCD = source(
-    "CVE-2022-21744: MediaTek Baseband GPRS PNCD Heap Buffer Overflow",
-    "https://labs.taszk.io/blog/post/84_mtk_pncd_bof/",
-)
-SRC_TASZK_FULL_CHAIN_2 = source(
-    "Full Chain Baseband Exploits, Part 2",
-    "https://labs.taszk.io/articles/post/full_chain_bb_part2/",
-)
-SRC_TASZK_21517 = source(
-    "CVE-2023-21517: Samsung Baseband LTE ESM TFT Heap Buffer Overflow",
-    "https://labs.taszk.io/blog/post/85_ss_esm_bof/",
-)
-SRC_TASZK_RLC = source(
-    "Exploiting New Attack Surfaces in Radio Layer 2 for Baseband RCE",
-    "https://labs.taszk.io/articles/post/there_will_be_bugs/",
-)
-SRC_TASZK_RLC_DEMO = source(
-    "Full Chain Baseband Exploits, Part 1",
-    "https://labs.taszk.io/articles/post/full_chain_bb_part1/",
-)
-
-SRC_TASZK_41111 = source(
-    "CVE-2023-41111: Samsung Baseband RLC Data Re-Assembly Buffer Overflow",
-    "https://labs.taszk.io/blog/post/93_rlc_bof/",
-)
-SRC_TASZK_41112 = source(
-    "CVE-2023-41112: Samsung Baseband RLC Data Re-Assembly Heap Buffer Overflow",
-    "https://labs.taszk.io/blog/post/94_rlc_heap_bof/",
-)
-SRC_TASZK_20725 = source(
-    "CVE-2025-20725: MediaTek Baseband Heap Overflow in inet_msg_unpack_addr",
-    "https://labs.taszk.io/blog/post/101_mtk_arbitrary_heap_inet_msg_unpack_addr/",
-)
-SRC_TASZK_20726 = source(
-    "CVE-2025-20726: MediaTek Baseband Heap Overflow in inet_msg_unpack_uri_with_len",
-    "https://labs.taszk.io/blog/post/103_heap_inet_msg_unpack_uri_with_len/",
-)
-SRC_TASZK_20727 = source(
-    "CVE-2025-20727: MediaTek Baseband Heap Overflow in SIP Authentication-Info",
-    "https://labs.taszk.io/blog/post/104_heap_inet_param_struct_free_fn/",
-)
-
-SRC_APPLE_2010_3832 = source(
-    "About the security content of iOS 4.2",
-    "https://support.apple.com/en-ca/103588",
-    "vendor-advisory",
-    role="vendor-description-and-impact",
-)
-
-
-CURATED_ADVISORIES: dict[str, list[dict[str, str]]] = {
-    "CVE-2010-3832": [SRC_APPLE_2010_3832],
+SOURCES = {
+    "weinmann": source("Baseband Attacks: Remote Exploitation of Memory Corruptions in Cellular Protocol Stacks", "https://www.usenix.org/conference/woot12/workshop-program/presentation/weinmann"),
+    "pixel": source("Over the Air, Under the Radar: Attacking and Securing the Pixel Modem", "https://i.blackhat.com/BH-US-23/Presentations/US-23-Karimi-Over-the-Air-Under-the-Radar.pdf"),
+    "breaking-band": source("Breaking Band: Reverse Engineering and Exploiting the Shannon Baseband", "https://comsecuris.com/slides/recon2016-breaking_band.pdf"),
+    "p0": source("Multiple Internet to Baseband Remote Code Execution Vulnerabilities in Exynos Modems", "https://projectzero.google/2023/03/multiple-internet-to-baseband-remote-rce.html"),
+    "firmwire": source("FirmWire: Transparent Dynamic Analysis for Cellular Baseband Firmware", "https://doi.org/10.14722/ndss.2022.23136"),
+    "basebridge": source("BaseBridge: Bridging the Gap Between Over-the-Air and Emulation Testing", "https://doi.org/10.1109/SP61157.2025.00142"),
+    "taszk-csn1": source("Exploiting CSN.1 Bugs in MediaTek Basebands", "https://labs.taszk.io/articles/post/mtk_baseband_csn1_exploitation/"),
+    "taszk-32484": source("CVE-2021-32484: MediaTek GSM RRM E-UTRAN Heap Buffer Overflow", "https://labs.taszk.io/blog/post/65_mtk_hof_1/"),
+    "taszk-32485": source("CVE-2021-32485: MediaTek GSM RRM UTRAN Heap Buffer Overflow", "https://labs.taszk.io/blog/post/66_mtk_hof_2/"),
+    "taszk-32486": source("CVE-2021-32486: MediaTek GSM RRM Extended-EARFCN Heap Buffer Overflow", "https://labs.taszk.io/blog/post/67_mtk_hof_3/"),
+    "taszk-32487": source("CVE-2021-32487: MediaTek GSM RRM Channel-Release Heap Buffer Overflow", "https://labs.taszk.io/blog/post/68_mtk_hof_4/"),
+    "taszk-pncd": source("CVE-2022-21744: MediaTek Baseband GPRS PNCD Heap Buffer Overflow", "https://labs.taszk.io/blog/post/84_mtk_pncd_bof/"),
+    "taszk-full-chain-2": source("Full Chain Baseband Exploits, Part 2", "https://labs.taszk.io/articles/post/full_chain_bb_part2/"),
+    "taszk-21517": source("CVE-2023-21517: Samsung Baseband LTE ESM TFT Heap Buffer Overflow", "https://labs.taszk.io/blog/post/85_ss_esm_bof/"),
+    "taszk-rlc": source("Exploiting New Attack Surfaces in Radio Layer 2 for Baseband RCE", "https://labs.taszk.io/articles/post/there_will_be_bugs/"),
+    "taszk-rlc-demo": source("Full Chain Baseband Exploits, Part 1", "https://labs.taszk.io/articles/post/full_chain_bb_part1/"),
+    "taszk-41111": source("CVE-2023-41111: Samsung Baseband RLC Data Re-Assembly Buffer Overflow", "https://labs.taszk.io/blog/post/93_rlc_bof/"),
+    "taszk-41112": source("CVE-2023-41112: Samsung Baseband RLC Data Re-Assembly Heap Buffer Overflow", "https://labs.taszk.io/blog/post/94_rlc_heap_bof/"),
+    "taszk-20725": source("CVE-2025-20725: MediaTek Baseband Heap Overflow in inet_msg_unpack_addr", "https://labs.taszk.io/blog/post/101_mtk_arbitrary_heap_inet_msg_unpack_addr/"),
+    "taszk-20726": source("CVE-2025-20726: MediaTek Baseband Heap Overflow in inet_msg_unpack_uri_with_len", "https://labs.taszk.io/blog/post/103_heap_inet_msg_unpack_uri_with_len/"),
+    "taszk-20727": source("CVE-2025-20727: MediaTek Baseband Heap Overflow in SIP Authentication-Info", "https://labs.taszk.io/blog/post/104_heap_inet_param_struct_free_fn/"),
+    "apple-2010-3832": source("About the security content of iOS 4.2", "https://support.apple.com/en-ca/103588", "vendor-advisory", role="vendor-description-and-impact"),
 }
+
+CURATED_ADVISORIES = {"CVE-2010-3832": [SOURCES["apple-2010-3832"]]}
 
 
 # RCE means public confirmation of baseband compromise or demonstrated control-flow
@@ -274,13 +214,13 @@ CURATED_ADVISORIES: dict[str, list[dict[str, str]]] = {
 VERIFIED_RCE: dict[str, dict[str, Any]] = {
     "CVE-2010-3832": {
         "reason": "The WOOT paper injects and executes arbitrary baseband code via the TMSI overflow.",
-        "sources": [SRC_WEINMANN],
+        "sources": [SOURCES["weinmann"]],
         "component_identified": True,
         "reproduced_failure": True,
         "primitive_characterized": True,
         "control_flow_redirection": True,
         "arbitrary_code_execution": True,
-        "reachability": "Rogue base station; pre-authentication GSM",
+        "reachability": "Rogue base station, pre-auth GSM",
         "rats": ["2G"],
     },
     "CVE-2015-8546": {
@@ -288,24 +228,24 @@ VERIFIED_RCE: dict[str, dict[str, Any]] = {
             "Breaking Band demonstrates saved-PC control, staged payload delivery, "
             "and execution through a hooked Layer-3 handler for the stack overflow."
         ),
-        "sources": [SRC_BREAKING_BAND],
+        "sources": [SOURCES["breaking-band"]],
         "component_identified": True,
         "reproduced_failure": True,
         "primitive_characterized": True,
         "control_flow_redirection": True,
         "arbitrary_code_execution": True,
-        "reachability": "Rogue base station; 2G OTA; call-control state",
+        "reachability": "Rogue base station, 2G OTA, call-control state",
         "rats": ["2G"],
     },
     "CVE-2022-20170": {
         "reason": "Google's Black Hat chain delivers staged shellcode after a fully controlled heap overwrite.",
-        "sources": [SRC_PIXEL],
+        "sources": [SOURCES["pixel"]],
         "component_identified": True,
         "reproduced_failure": True,
         "primitive_characterized": True,
         "control_flow_redirection": True,
         "arbitrary_code_execution": True,
-        "reachability": "Rogue base station; 2G OTA; no user interaction",
+        "reachability": "Rogue base station, 2G OTA, no user interaction",
         "rats": ["2G"],
     },
     "CVE-2022-21744": {
@@ -313,86 +253,94 @@ VERIFIED_RCE: dict[str, dict[str, Any]] = {
             "TASZK explicitly identifies CVE-2022-21744 as an RCE in its full-chain "
             "baseband exploitation write-up and documents the exploit primitives."
         ),
-        "sources": [SRC_TASZK_PNCD, SRC_TASZK_FULL_CHAIN_2],
+        "sources": [SOURCES["taszk-pncd"], SOURCES["taszk-full-chain-2"]],
         "component_identified": True,
         "reproduced_failure": True,
         "primitive_characterized": True,
         "control_flow_redirection": True,
         "arbitrary_code_execution": True,
-        "reachability": "Rogue base station; 2G GPRS PNCD; no user interaction",
+        "reachability": "Rogue base station, 2G GPRS PNCD, no user interaction",
         "rats": ["2G"],
     },
     "CVE-2023-24033": {
         "reason": "Project Zero states that tests confirmed Internet-to-baseband compromise.",
-        "sources": [SRC_P0],
+        "sources": [SOURCES["p0"]],
         "component_identified": True,
         "reproduced_failure": True,
         "primitive_characterized": False,
         "control_flow_redirection": True,
         "arbitrary_code_execution": True,
-        "reachability": "Internet-to-baseband; phone number only; no user interaction",
+        "reachability": "Internet-to-baseband, phone number only, no interaction",
     },
     "CVE-2023-26496": {
         "reason": "Project Zero states that tests confirmed Internet-to-baseband compromise.",
-        "sources": [SRC_P0],
+        "sources": [SOURCES["p0"]],
         "component_identified": True,
         "reproduced_failure": True,
         "primitive_characterized": False,
         "control_flow_redirection": True,
         "arbitrary_code_execution": True,
-        "reachability": "Internet-to-baseband; phone number only; no user interaction",
+        "reachability": "Internet-to-baseband, phone number only, no interaction",
     },
     "CVE-2023-26497": {
         "reason": "Project Zero states that tests confirmed Internet-to-baseband compromise.",
-        "sources": [SRC_P0],
+        "sources": [SOURCES["p0"]],
         "component_identified": True,
         "reproduced_failure": True,
         "primitive_characterized": False,
         "control_flow_redirection": True,
         "arbitrary_code_execution": True,
-        "reachability": "Internet-to-baseband; phone number only; no user interaction",
+        "reachability": "Internet-to-baseband, phone number only, no interaction",
     },
     "CVE-2023-26498": {
         "reason": "Project Zero states that tests confirmed Internet-to-baseband compromise.",
-        "sources": [SRC_P0],
+        "sources": [SOURCES["p0"]],
         "component_identified": True,
         "reproduced_failure": True,
         "primitive_characterized": False,
         "control_flow_redirection": True,
         "arbitrary_code_execution": True,
-        "reachability": "Internet-to-baseband; phone number only; no user interaction",
+        "reachability": "Internet-to-baseband, phone number only, no interaction",
     },
     "CVE-2024-20039": {
         "reason": "BaseBridge redirects the program counter to a chosen valid function and reproduces the case OTA.",
-        "sources": [SRC_BASEBRIDGE],
+        "sources": [SOURCES["basebridge"]],
         "component_identified": True,
         "reproduced_failure": True,
         "primitive_characterized": True,
         "control_flow_redirection": True,
         "arbitrary_code_execution": False,
-        "reachability": "Cellular OTA; registered/connected state in the published reproduction",
+        "reachability": "Cellular OTA, registered/connected",
         "rats": ["4G/LTE"],
     },
     "CVE-2023-41111": {
         "reason": "TASZK publishes a working chained baseband exploit and demonstrates runtime compromise.",
-        "sources": [SRC_TASZK_41111, SRC_TASZK_RLC, SRC_TASZK_RLC_DEMO],
+        "sources": [
+            SOURCES["taszk-41111"],
+            SOURCES["taszk-rlc"],
+            SOURCES["taszk-rlc-demo"],
+        ],
         "component_identified": True,
         "reproduced_failure": True,
         "primitive_characterized": True,
         "control_flow_redirection": True,
         "arbitrary_code_execution": True,
-        "reachability": "Cellular OTA; unauthenticated 2G Layer 2",
+        "reachability": "Cellular OTA, unauthenticated 2G L2",
         "rats": ["2G"],
     },
     "CVE-2023-41112": {
         "reason": "TASZK publishes a working chained baseband exploit and demonstrates runtime compromise.",
-        "sources": [SRC_TASZK_41112, SRC_TASZK_RLC, SRC_TASZK_RLC_DEMO],
+        "sources": [
+            SOURCES["taszk-41112"],
+            SOURCES["taszk-rlc"],
+            SOURCES["taszk-rlc-demo"],
+        ],
         "component_identified": True,
         "reproduced_failure": True,
         "primitive_characterized": True,
         "control_flow_redirection": True,
         "arbitrary_code_execution": True,
-        "reachability": "Cellular OTA; unauthenticated 2G Layer 2; chained with CVE-2023-41111",
+        "reachability": "Cellular OTA, unauthenticated 2G L2, chained with CVE-2023-41111",
         "rats": ["2G"],
     },
 }
@@ -421,7 +369,7 @@ RESEARCH_EVIDENCE: dict[str, dict[str, Any]] = {
     **{
         cve: ev(
             "FirmWire reproduces the OTA failure and identifies the corruptible stack/heap object or saved PC.",
-            [SRC_FIRMWIRE],
+            [SOURCES["firmwire"]],
             reproduced=True,
             primitive=True,
         )
@@ -430,51 +378,60 @@ RESEARCH_EVIDENCE: dict[str, dict[str, Any]] = {
     **{
         cve: ev(
             "TASZK recovers the vulnerable decoder and develops heap-corruption primitives; no public working code-execution proof is claimed here.",
-            [direct_source, SRC_TASZK_CSN1],
+            [direct_source, SOURCES["taszk-csn1"]],
             primitive=True,
         )
         for cve, direct_source in {
-            "CVE-2021-32484": SRC_TASZK_32484,
-            "CVE-2021-32485": SRC_TASZK_32485,
-            "CVE-2021-32486": SRC_TASZK_32486,
-            "CVE-2021-32487": SRC_TASZK_32487,
+            "CVE-2021-32484": SOURCES["taszk-32484"],
+            "CVE-2021-32485": SOURCES["taszk-32485"],
+            "CVE-2021-32486": SOURCES["taszk-32486"],
+            "CVE-2021-32487": SOURCES["taszk-32487"],
         }.items()
     },
     "CVE-2023-21517": ev(
         "TASZK documents the LTE ESM heap overflow and its attacker-controlled fields.",
-        [SRC_TASZK_21517],
+        [SOURCES["taszk-21517"]],
         primitive=True,
     ),
     "CVE-2024-20154": ev(
         "BaseBridge reproduces the stack overwrite OTA and shows that it reaches the stored return address; execution only reaches zero in the published test.",
-        [SRC_BASEBRIDGE],
+        [SOURCES["basebridge"]],
         reproduced=True,
         primitive=True,
     ),
     "CVE-2024-20150": ev(
         "BaseBridge reproduces the fault OTA and turns the overwrite into an attacker-selected pointer read/crash primitive.",
-        [SRC_BASEBRIDGE],
+        [SOURCES["basebridge"]],
         reproduced=True,
         primitive=True,
     ),
     "CVE-2025-20725": ev(
         "TASZK publishes a triggering SIP payload and characterizes an arbitrary heap overflow.",
-        [SRC_TASZK_20725],
+        [SOURCES["taszk-20725"]],
         reproduced=True,
         primitive=True,
     ),
     "CVE-2025-20726": ev(
         "TASZK publishes triggering SIP inputs and characterizes the heap overwrite.",
-        [SRC_TASZK_20726],
+        [SOURCES["taszk-20726"]],
         reproduced=True,
         primitive=True,
     ),
     "CVE-2025-20727": ev(
         "TASZK publishes triggering SIP inputs and characterizes the avoidable heap-footer overwrite.",
-        [SRC_TASZK_20727],
+        [SOURCES["taszk-20727"]],
         reproduced=True,
         primitive=True,
     ),
+}
+
+REVIEWED_MEMORY_OVERRIDES = {
+    # BaseBridge characterizes an attacker-selected pointer read despite the
+    # advisory's generic deserialization/logic-error wording.
+    "CVE-2024-20150": (IMPACT_DOS, "invalid-memory-access"),
+    # The concrete modem/MM description identifies an absent NULL check; it is
+    # more specific than the conflicting secondary CWE-400 assignment.
+    "CVE-2024-55568": (IMPACT_DOS, "null-pointer-dereference"),
 }
 
 
@@ -497,40 +454,53 @@ RESEARCH_REF_PREFIXES = (
 WRITE_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("heap-buffer-overflow", (r"heap[- ](?:based )?(?:buffer )?overflow", r"cwe[-: ]*122")),
     ("stack-buffer-overflow", (r"stack[- ](?:based )?(?:buffer )?overflow", r"cwe[-: ]*121")),
-    ("out-of-bounds-write", (r"out[- ]of[- ]bounds write", r"\boob write\b", r"cwe[-: ]*787")),
+    ("out-of-bounds-write", (r"out[- ]of[- ]bounds? write", r"\boob write\b", r"cwe[-: ]*787")),
     ("use-after-free", (r"use[- ]after[- ]free", r"cwe[-: ]*416")),
     ("double-free", (r"double free", r"cwe[-: ]*415")),
     ("invalid-free", (r"release of invalid pointer", r"cwe[-: ]*763")),
     ("out-of-range-pointer", (r"out[- ]of[- ]range pointer", r"cwe[-: ]*823")),
-    ("array-index-write", (r"improper validation of array index", r"cwe[-: ]*129")),
     ("classic-buffer-overflow", (r"classic buffer overflow", r"cwe[-: ]*120")),
     ("buffer-overflow", (r"integer overflow to (?:a )?buffer overflow", r"cwe[-: ]*680", r"\bbuffer overflow\b")),
     ("write-what-where", (r"arbitrary write", r"write[- ]what[- ]where")),
 )
 
-GENERIC_MEMORY_RULES = (r"\bmemory corruption\b", r"\bmemory corruptions\b")
+GENERIC_MEMORY_RULES = (
+    r"\bmemory corruptions?\b",
+    r"cwe[-: ]*119\b",
+)
 
 READ_DOS_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("out-of-bounds-read", (r"out[- ]of[- ]bounds read", r"buffer over[- ]read", r"cwe[-: ]*125", r"cwe[-: ]*126")),
-    ("null-pointer-dereference", (r"null pointer dereference", r"null[- ]ptr", r"cwe[-: ]*476")),
-    ("uninitialized-memory-read", (r"uninitialized (?:heap )?(?:data|memory)",)),
+    ("out-of-bounds-read", (r"out[- ]of[- ]bounds?(?: memory)? read", r"buffer over[- ]?read", r"cwe[-: ]*125", r"cwe[-: ]*126")),
+    ("null-pointer-dereference", (r"null pointer (?:dereference|access)", r"null[- ]ptr", r"cwe[-: ]*476")),
+    ("uninitialized-memory-read", (
+        r"uninitialized (?:heap )?(?:data|memory|variable)",
+        r"cwe[-: ]*457\b",
+    )),
     ("invalid-memory-access", (r"invalid memory (?:access|read)",)),
 )
 
 EXCLUDED_NON_MEMORY = (
-    r"cwe[-: ]*327",
-    r"cwe[-: ]*326",
-    r"cwe[-: ]*295",
-    r"cwe[-: ]*287",
-    r"cwe[-: ]*285",
-    r"cwe[-: ]*331",
-    r"cwe[-: ]*757",
-    r"improper authentication",
-    r"improper authorization",
-    r"improper access control",
-    r"certificate validation",
-    r"risky cryptographic algorithm",
-    r"algorithm downgrade",
+    # Authentication, authorization, disclosure, and cryptography.
+    r"cwe[-: ]*(?:276|280|285|287|288|294|295|306|326|327|331|359|669|732|757|922)\b",
+    r"improper (?:authentication|authorization|access control)",
+    r"permissions?, privileges?, and access controls?|permission issues?",
+    r"missing (?:permission check|authentication|data encryption)",
+    r"incorrect (?:default permissions?|permission assignment|privilege assignment)",
+    r"permissions? bypass|certificate validation|risky cryptographic algorithm|algorithm downgrade",
+    r"information (?:exposure|disclosure)|insecure storage|key management|key material",
+    r"security keys? (?:are |could be )?(?:logged|leaked)|hard-coded random|insufficiently random",
+    r"ciphersuite|replay (?:attack|protection)|integrity and ciphering protection",
+    # Non-memory denial-of-service mechanisms.
+    r"cwe[-: ]*(?:248|400|401|674|703|754|770|835)\b",
+    r"uncontrolled resource consumption|allocation of resources without limits",
+    r"improper release of memory|memory (?:is )?(?:leak(?:ed)?|exhaustion)|heap leak",
+    r"infinite loop|unreachable exit|uncontrolled recursion",
+    r"uncaught exception|divide by zero|exceptional conditions|detection of error condition without action",
+    # Explicit protocol, configuration, and application logic rather than memory safety.
+    r"\blogic error\b|weak configuration|(?:incorrect|improper) error handling|parcel format mismatch",
+    r"\bmisconfiguration\b.*\brwx\b",
+    r"command injection|improperly implemented security check",
+    r"missing verification of (?:nas security|hashmme)",
 )
 
 
@@ -555,6 +525,7 @@ SCOPE_RULES: dict[str, tuple[str, ...]] = {
     ),
     SCOPE_CELLULAR: (
         r"\brrc\b", r"\bnas\b", r"\bemm\b", r"\besm\b", r"\bnrmm\b",
+        r"\bmm (?:packets?|task)\b",
         r"\brrm\b", r"\brlc\b", r"\bpdcp\b", r"\bmac\b", r"\bllc\b",
         r"call control", r"\bgsm\b", r"\bgprs\b", r"\blte\b", r"\b5g\b",
         r"\bnr\b", r"\bumts\b", r"\bwcdma\b", r"cellular", r"base station",
@@ -571,7 +542,7 @@ RAT_RULES: dict[str, tuple[str, ...]] = {
 PROTOCOL_RULES: dict[str, tuple[str, ...]] = {
     "RRC": (r"\brrc\b", r"radio resource control"),
     "NAS": (r"\bnas\b", r"non[- ]access stratum"),
-    "MM": (r"\bmobility management\b", r"\bemm\b", r"\bnrmm\b", r"\bgsm mm\b"),
+    "MM": (r"\bmobility management\b", r"\bemm\b", r"\bnrmm\b", r"\bgsm mm\b", r"\bmm (?:packets?|task)\b"),
     "SM": (r"\bsession management\b", r"\besm\b", r"\b5g sm\b"),
     "RRM": (r"\brrm\b", r"radio resource management"),
     "Call Control": (r"\bcall control\b", r"\bcc message\b", r"\bgsm cc\b"),
@@ -693,6 +664,8 @@ def extract_affected_chipsets(record: dict[str, Any]) -> list[str]:
             if not isinstance(affected, dict):
                 continue
             product = clean(affected.get("product"))
+            if product.lower() in placeholders:
+                continue
             for value in re.split(r"[,;\n]+|\s*/\s*", product):
                 normalized = clean(value)
                 if normalized.lower() not in placeholders:
@@ -742,7 +715,7 @@ def parse_typst_records(path: Path) -> dict[str, dict[str, Any]]:
             field = pattern.search(body)
             entry[name] = clean(field.group(1)) if field else ""
         entry["reference_keys"] = list(dict.fromkeys(re.findall(r"#cite\(<([^>]+)>\)", body)))
-        # Later duplicate entries replace earlier entries in the original pipeline.
+        # Later duplicate annotations win.
         records[cve_id] = entry
     return records
 
@@ -781,14 +754,7 @@ def source_type(url: str) -> str:
 
 
 def reference_candidates(cve_id: str, urls: list[str]) -> list[dict[str, Any]]:
-    """Preserve inherited URLs without misrepresenting them as evidence.
-
-    Input records frequently contain obsolete indexes, product landing pages,
-    and at least one URL whose path names a different CVE.  URL structure can
-    identify obvious conflicts, but it cannot prove page contents.  Therefore
-    every inherited URL is quarantined here and is never used to justify an
-    impact or evidence depth.
-    """
+    """Quarantine inherited, unverified URLs for provenance reporting."""
     candidates: list[dict[str, Any]] = []
     for url in dict.fromkeys(urls):
         url_cves = sorted(set(re.findall(r"CVE-\d{4}-\d{4,7}", url, re.I)))
@@ -822,20 +788,13 @@ def merge_sources(cve_id: str, evidence: dict[str, Any]) -> list[dict[str, str]]
     return list(dedup.values())
 
 
-def output_sources(sources: Iterable[dict[str, Any]]) -> list[dict[str, str]]:
-    """Return the intentionally minimal source representation used in JSON output."""
-    return [{"title": item["title"], "url": item["url"]} for item in sources]
-
-
 def output_record(record: dict[str, Any]) -> dict[str, Any]:
-    """Remove internal source-provenance metadata from an emitted CVE record."""
     return {
-        **{
-            key: value
-            for key, value in record.items()
-            if key != "input_reference_candidates"
-        },
-        "sources": output_sources(record["sources"]),
+        **{key: value for key, value in record.items() if key != "input_reference_candidates"},
+        "sources": [
+            {"title": source["title"], "url": source["url"]}
+            for source in record["sources"]
+        ],
     }
 
 
@@ -845,6 +804,10 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def write_json(path: Path, value: Any) -> None:
+    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def extract_patch_id(text: str) -> str:
@@ -864,6 +827,10 @@ def classify_memory(text: str, cve_id: str) -> tuple[str | None, str | None, str
         # read/write primitive. Keep the RCE impact while marking the underlying
         # memory operation as assumed when the root cause is not disclosed.
         return IMPACT_RCE, "unknown-memory-operation-rce", ""
+
+    if cve_id in REVIEWED_MEMORY_OVERRIDES:
+        impact, bug_class = REVIEWED_MEMORY_OVERRIDES[cve_id]
+        return impact, bug_class, ""
 
     write_class = first_match(text, WRITE_RULES)
     read_class = first_match(text, READ_DOS_RULES)
@@ -914,41 +881,40 @@ def classify_scope(text: str, typst: dict[str, Any]) -> tuple[list[str], str, li
     return scopes or [SCOPE_UNKNOWN], primary, rats, protocols, evidence_basis
 
 
-def default_evidence() -> dict[str, Any]:
-    return {
-        "reason": "",
-        "sources": [],
-        "component_identified": False,
-        "reproduced_failure": False,
-        "primitive_characterized": False,
-        "control_flow_redirection": False,
-        "arbitrary_code_execution": False,
-    }
-
-
 def evidence_for(cve_id: str) -> dict[str, Any]:
-    if cve_id in VERIFIED_RCE:
-        return VERIFIED_RCE[cve_id]
-    if cve_id in RESEARCH_EVIDENCE:
-        return RESEARCH_EVIDENCE[cve_id]
-    return default_evidence()
+    return VERIFIED_RCE.get(cve_id) or RESEARCH_EVIDENCE.get(cve_id) or {
+        "reason": "", "sources": [], "component_identified": False,
+        "reproduced_failure": False, "primitive_characterized": False,
+        "control_flow_redirection": False, "arbitrary_code_execution": False,
+    }
 
 
 def infer_reachability(primary_scope: str, text: str, evidence: dict[str, Any]) -> str:
     if evidence.get("reachability"):
         return evidence["reachability"]
     if re.search(r"rogue base station", text, re.I):
-        return "Rogue base station; authentication/state not fully specified"
-    if re.search(r"no user interaction", text, re.I) and re.search(r"\bremote\b|network", text, re.I):
-        return "Remote; no user interaction; protocol state not public"
+        return "Rogue base station, state unspecified"
     if primary_scope == SCOPE_SIM:
-        return "SIM/UICC-originated or physical/compromised-card path"
+        return "SIM/UICC or physical-card path"
     if primary_scope == SCOPE_LOCAL_DIAG:
-        return "Local or intra-device"
+        return "Local/intra-device"
     if primary_scope == SCOPE_TELEPHONY:
-        return "IMS/telephony path; registration/authentication state not consistently public"
+        return "IMS/telephony, state partly unknown"
     if primary_scope == SCOPE_CELLULAR:
-        return "Cellular OTA or network-originated; state not public"
+        return "Cellular OTA/network, state unknown"
+    if primary_scope == SCOPE_IP:
+        return (
+            "IP/user plane via cellular base station, attacker/state unknown"
+        )
+    no_interaction = re.search(
+        r"(?:no|without) user interaction|user interaction is not (?:needed|required)",
+        text,
+        re.I,
+    )
+    if no_interaction and re.search(r"\bremote\b|network", text, re.I):
+        return (
+            "Remote modem via cellular base station, no interaction, state unknown"
+        )
     return "Unknown"
 
 
@@ -988,13 +954,12 @@ def enrich_record(raw: RawRecord, typst: dict[str, Any]) -> tuple[dict[str, Any]
         ) if meaningful(part)
     )
     impact, bug_class, exclusion = classify_memory(combined.lower(), raw.cve_id)
+    if raw.cve_id in MANUAL_EXCLUSIONS:
+        impact = None
+        bug_class = None
+        exclusion = MANUAL_EXCLUSIONS[raw.cve_id]
     evidence = evidence_for(raw.cve_id)
     all_sources = merge_sources(raw.cve_id, evidence)
-    research_ref_keys = [
-        key for key in typst.get("reference_keys", [])
-        if key.lower().startswith(RESEARCH_REF_PREFIXES)
-    ]
-
     base = {
         "cve_id": raw.cve_id,
         "vendor": normalize_vendor(raw.vendor or clean(typst.get("vendor"))),
@@ -1012,10 +977,7 @@ def enrich_record(raw: RawRecord, typst: dict[str, Any]) -> tuple[dict[str, Any]
             "reference_keys": typst.get("reference_keys", []),
         },
         "sources": all_sources,
-        # Retained internally for the provenance audit only. These inherited
-        # URLs are removed by output_record() and never support classification.
         "input_reference_candidates": reference_candidates(raw.cve_id, raw.references),
-        "research_reference_keys": research_ref_keys,
     }
 
     if not impact or not bug_class:
@@ -1029,8 +991,9 @@ def enrich_record(raw: RawRecord, typst: dict[str, Any]) -> tuple[dict[str, Any]
     for rat in evidence.get("rats", []):
         if rat not in rats:
             rats.append(rat)
-    has_external = any(item["type"] == "research" for item in all_sources) or bool(
-        research_ref_keys
+    has_external = any(item["type"] == "research" for item in all_sources) or any(
+        key.lower().startswith(RESEARCH_REF_PREFIXES)
+        for key in typst.get("reference_keys", [])
     )
     root_cause_detail = root_detail(typst, bug_class, protocols)
     component_identified = evidence.get("component_identified", False) or root_cause_detail in {
@@ -1147,37 +1110,6 @@ def build_summary(
             (r["impact"] for r in records if r["year"] == year), IMPACT_ORDER
         )
 
-    scope_profiles: dict[str, dict[str, Any]] = {}
-    for scope in SCOPE_ORDER:
-        scoped = [record for record in records if record["primary_scope"] == scope]
-        if not scoped:
-            continue
-        top_classes = Counter(record["bug_class"] for record in scoped).most_common(6)
-        scope_profiles[scope] = {
-            "count": len(scoped),
-            "percent_of_filtered_dataset": percentage(len(scoped), total),
-            "impact": counter_dict((record["impact"] for record in scoped), IMPACT_ORDER),
-            "write_capable_or_rce": {
-                "count": sum(record["impact"] != IMPACT_DOS for record in scoped),
-                "percent_within_scope": percentage(
-                    sum(record["impact"] != IMPACT_DOS for record in scoped),
-                    len(scoped),
-                ),
-            },
-            "bug_family": counter_dict(
-                (record["bug_family"] for record in scoped),
-                BUG_FAMILY_ORDER,
-            ),
-            "top_bug_classes": [
-                {"bug_class": bug_class_name, "count": count}
-                for bug_class_name, count in top_classes
-            ],
-            "protocol_hits": counter_dict(
-                protocol for record in scoped for protocol in record["protocols"]
-            ),
-            "vendor_disclosures": counter_dict(record["vendor"] for record in scoped),
-        }
-
     coverage = {
         "known_primary_scope": {"count": known_scope, "percent": percentage(known_scope, total)},
         "specific_protocol": {"count": protocol_known, "percent": percentage(protocol_known, total)},
@@ -1228,41 +1160,6 @@ def build_summary(
         "memory_safety_basis": counter_dict(r["memory_safety_basis"] for r in records),
         "coverage": coverage,
         "year_by_impact": by_year_impact,
-        "scope_profiles": scope_profiles,
-        "direction_questions": {
-            "q1_source_beyond_short_vendor_advisory": coverage["source_beyond_vendor_advisory"],
-            "q2_vendor_only_vs_research_source": {
-                "research_enriched": external,
-                "vendor_or_database_only": total - external,
-            },
-            "q3_triggering_protocol_or_input_surface": {
-                "known_primary_scope": coverage["known_primary_scope"],
-                "specific_protocol": coverage["specific_protocol"],
-            },
-            "q4_specific_memory_bug_class": coverage["specific_bug_class"],
-            "q5_public_crash_or_failure_reproduction": coverage["public_reproduced_failure"],
-            "q6_public_attacker_controlled_primitive": coverage["public_primitive_characterization"],
-            "q7_public_control_flow_or_arbitrary_execution": coverage["public_control_flow_or_code_execution"],
-            "q8_patch_reconstruction": {
-                "patch_identifier": coverage["patch_identifier"],
-                "firmware_range": coverage["affected_or_fixed_firmware_range"],
-                "public_patch_diff": coverage["public_patch_diff"],
-            },
-            "q9_scope_label_basis": {
-                "manual_annotation_plus_description": manual_scope,
-                "description_keyword_inference": inferred_scope,
-                "unknown": total - manual_scope - inferred_scope,
-            },
-            "q10_reliable_figures": [
-                "publication trend by impact",
-                "impact by primary scope",
-                "memory-bug families by primary scope",
-                "overall memory-bug class distribution",
-                "measured public-evidence coverage",
-                "RAT hit counts (multi-valued, not mutually exclusive)",
-                "vendor disclosure counts with an explicit non-ranking caveat",
-            ],
-        },
         "taxonomy_notes": {
             "RCE": "Requires public confirmation of compromise or demonstrated control-flow/code execution.",
             "Write Primitive": (
@@ -1360,8 +1257,15 @@ def validate_outputs(
     assert len(record_ids) == len(set(record_ids)), "included CVE IDs are not unique"
     assert len(excluded_ids) == len(set(excluded_ids)), "excluded CVE IDs are not unique"
     assert not set(record_ids).intersection(excluded_ids), "included/excluded overlap"
+    assert set(MANUAL_EXCLUSIONS).issubset(excluded_ids), "manual blacklist must be excluded"
     assert all(record["impact"] in IMPACT_ORDER for record in records)
     assert all(record["primary_scope"] in SCOPE_ORDER for record in records)
+    assert all(";" not in record["reachability"] for record in records)
+    assert all(
+        not record["evidence"]["component_identified"]
+        or record["reachability"] != "Unknown"
+        for record in records
+    ), "an identified component must have at least a partial delivery-path classification"
     assert all(record["evidence"]["band"] in EVIDENCE_BANDS for record in records)
     assert all(
         record["evidence"]["band"]
@@ -1452,6 +1356,12 @@ def plot_outputs(records: list[dict[str, Any]], output: Path) -> None:
         IMPACT_DOS: "#4d9221",
     }
 
+    def save_plot(name: str) -> None:
+        ax.spines[["top", "right"]].set_visible(False)
+        fig.tight_layout()
+        fig.savefig(output / name, dpi=180)
+        plt.close(fig)
+
     years = sorted({r["year"] for r in records})
     bottoms = [0] * len(years)
     fig, ax = plt.subplots(figsize=(9, 4.8))
@@ -1462,10 +1372,7 @@ def plot_outputs(records: list[dict[str, Any]], output: Path) -> None:
     ax.set_ylabel("Filtered memory-safety CVEs")
     ax.set_xlabel("Publication year")
     ax.legend(frameon=False)
-    ax.spines[["top", "right"]].set_visible(False)
-    fig.tight_layout()
-    fig.savefig(output / "memory_cves_by_year_impact.png", dpi=180)
-    plt.close(fig)
+    save_plot("memory_cves_by_year_impact.png")
 
     scopes = [scope for scope in SCOPE_ORDER if any(r["primary_scope"] == scope for r in records)]
     left = [0] * len(scopes)
@@ -1480,10 +1387,7 @@ def plot_outputs(records: list[dict[str, Any]], output: Path) -> None:
     ax.invert_yaxis()
     ax.set_xlabel("Filtered memory-safety CVEs")
     ax.legend(frameon=False)
-    ax.spines[["top", "right"]].set_visible(False)
-    fig.tight_layout()
-    fig.savefig(output / "memory_cves_impact_by_scope.png", dpi=180)
-    plt.close(fig)
+    save_plot("memory_cves_impact_by_scope.png")
 
     family_colors = {
         BUG_FAMILY_BOUNDS_WRITE: "#b2182b",
@@ -1507,10 +1411,7 @@ def plot_outputs(records: list[dict[str, Any]], output: Path) -> None:
     ax.invert_yaxis()
     ax.set_xlabel("Filtered memory-safety CVEs")
     ax.legend(frameon=False, fontsize=8)
-    ax.spines[["top", "right"]].set_visible(False)
-    fig.tight_layout()
-    fig.savefig(output / "memory_bug_families_by_scope.png", dpi=180)
-    plt.close(fig)
+    save_plot("memory_bug_families_by_scope.png")
 
     top_bug_classes = Counter(record["bug_class"] for record in records).most_common(10)
     labels = [label.replace("-", " ") for label, _ in reversed(top_bug_classes)]
@@ -1520,10 +1421,7 @@ def plot_outputs(records: list[dict[str, Any]], output: Path) -> None:
     ax.set_xlabel("Filtered memory-safety CVEs")
     for index, value in enumerate(values):
         ax.text(value + 0.5, index, str(value), va="center")
-    ax.spines[["top", "right"]].set_visible(False)
-    fig.tight_layout()
-    fig.savefig(output / "memory_bug_classes.png", dpi=180)
-    plt.close(fig)
+    save_plot("memory_bug_classes.png")
 
     coverage_labels = (
         ("CVE records", len(records)),
@@ -1543,10 +1441,7 @@ def plot_outputs(records: list[dict[str, Any]], output: Path) -> None:
     ax.set_xlabel("CVEs")
     for index, value in enumerate(values):
         ax.text(value + max(values) * 0.01, index, str(value), va="center")
-    ax.spines[["top", "right"]].set_visible(False)
-    fig.tight_layout()
-    fig.savefig(output / "public_evidence_coverage.png", dpi=180)
-    plt.close(fig)
+    save_plot("public_evidence_coverage.png")
 
 
 def run(
@@ -1562,7 +1457,7 @@ def run(
     raw_records = load_json_records(json_files)
     typst_records = parse_typst_records(typst_path)
 
-    # Preserve enrichment-only CVEs as in the original pipeline.
+    # Include CVEs that exist only in the manual annotations.
     for cve_id, typst in typst_records.items():
         if cve_id not in raw_records:
             raw_records[cve_id] = synthetic_raw(cve_id, typst)
@@ -1583,25 +1478,12 @@ def run(
     source_audit = build_source_provenance_audit(records, excluded)
 
     output.mkdir(parents=True, exist_ok=True)
-    # Schema 3.1 removed the legacy RCE audit. Clean an artifact left by an
-    # earlier run so an in-place regeneration has the same output contract.
+    # Remove the pre-3.1 artifact when regenerating in place.
     (output / "rce_candidate_audit.json").unlink(missing_ok=True)
-    (output / "baseband_memory_cves.json").write_text(
-        json.dumps([output_record(record) for record in records], indent=2, ensure_ascii=False)
-        + "\n",
-        encoding="utf-8",
-    )
-    (output / "excluded_non_memory_cves.json").write_text(
-        json.dumps([output_record(record) for record in excluded], indent=2, ensure_ascii=False)
-        + "\n",
-        encoding="utf-8",
-    )
-    (output / "classification_summary.json").write_text(
-        json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
-    (output / "source_provenance_audit.json").write_text(
-        json.dumps(source_audit, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    write_json(output / "baseband_memory_cves.json", [output_record(r) for r in records])
+    write_json(output / "excluded_non_memory_cves.json", [output_record(r) for r in excluded])
+    write_json(output / "classification_summary.json", summary)
+    write_json(output / "source_provenance_audit.json", source_audit)
     manifest = {
         "schema_version": SCHEMA_VERSION,
         "analysis_release": "evidence-aware-taxonomy-v3.1",
@@ -1611,7 +1493,8 @@ def run(
             "enrich.py": {"sha256": sha256_file(Path(__file__))},
             "policy": (
                 "Deterministic local classification, explicit missing-evidence memory-bug "
-                "assumption, identifier-specific canonical links, and curated public-source decisions."
+                "assumption, identifier-specific manual exclusions and canonical links, and "
+                "curated public-source decisions."
             ),
         },
         "inputs": {
@@ -1631,6 +1514,7 @@ def run(
             "all_checks_passed": True,
             "unique_ids": True,
             "included_excluded_disjoint": True,
+            "manual_blacklist_excluded": True,
             "low_information_cves_receive_conservative_dos": True,
             "retained_rces_equal_curated_verified_set": True,
             "all_retained_rces_have_research_sources": True,
@@ -1638,9 +1522,7 @@ def run(
             "inherited_input_urls_are_not_used_as_evidence": True,
         },
     }
-    (output / "dataset_manifest.json").write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    write_json(output / "dataset_manifest.json", manifest)
     write_csv(output / "baseband_memory_cves.csv", records)
     if make_plots:
         plot_outputs(records, output)

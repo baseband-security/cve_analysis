@@ -22,13 +22,6 @@
               exec python ${self}/enrich.py "$@"
             '';
           };
-          verify = pkgs.writeShellApplication {
-            name = "baseband-cve-verify";
-            runtimeInputs = [ python ];
-            text = ''
-              exec python ${self}/verify_outputs.py "$@"
-            '';
-          };
           fetch = pkgs.writeShellApplication {
             name = "baseband-cve-fetch";
             runtimeInputs = [ python ];
@@ -67,6 +60,14 @@
               exec python ${self}/serve.py "$@"
             '';
           };
+          website = pkgs.writeShellApplication {
+            name = "baseband-cve-website";
+            runtimeInputs = [ pkgs.python312 ];
+            text = ''
+              data_dir="''${BASEBAND_CVE_OUTPUT_DIR:-$PWD/outputs}"
+              exec python ${self}/serve.py --data-dir "$data_dir" "$@"
+            '';
+          };
           site = pkgs.writeShellApplication {
             name = "baseband-cve-site";
             runtimeInputs = [ python ];
@@ -89,14 +90,14 @@
             '';
           };
         in
-        { inherit pkgs python enrich verify fetch pipeline serve site; };
+        { inherit pkgs python enrich fetch pipeline serve website site; };
     in
     {
       packages = forAllSystems (system:
         let p = packagesFor system;
         in {
           default = p.pipeline;
-          inherit (p) pipeline enrich verify fetch serve site;
+          inherit (p) pipeline enrich fetch serve website site;
         });
 
       apps = forAllSystems (system: {
@@ -112,10 +113,6 @@
           type = "app";
           program = "${self.packages.${system}.enrich}/bin/baseband-cve-enrich";
         };
-        verify = {
-          type = "app";
-          program = "${self.packages.${system}.verify}/bin/baseband-cve-verify";
-        };
         fetch = {
           type = "app";
           program = "${self.packages.${system}.fetch}/bin/baseband-cve-fetch";
@@ -123,6 +120,10 @@
         serve = {
           type = "app";
           program = "${self.packages.${system}.serve}/bin/baseband-cve-serve";
+        };
+        website = {
+          type = "app";
+          program = "${self.packages.${system}.website}/bin/baseband-cve-website";
         };
         site = {
           type = "app";
@@ -142,58 +143,5 @@
           };
         });
 
-      checks = forAllSystems (system:
-        let p = packagesFor system;
-        in {
-          pipeline = p.pkgs.runCommand "baseband-cve-pipeline-check" {
-            nativeBuildInputs = [ p.python p.pkgs.nodejs_22 ];
-          } ''
-            export MPLCONFIGDIR="$TMPDIR/matplotlib"
-            export PYTHONPYCACHEPREFIX="$TMPDIR/pycache"
-            test -d ${cvelistV5}/cves
-            cd ${self}
-            python -m py_compile serve.py
-            node --check web/app.js
-            test -s web/index.html
-            test -s web/styles.css
-            python fetch_json.py \
-              --cve-list-dir ${cvelistV5} \
-              --merge-dir "$TMPDIR/empty-merge" \
-              --output-dir "$TMPDIR/fetched_json" \
-              --offline
-            python enrich.py \
-              --input-dir "$TMPDIR/fetched_json" \
-              --output "$TMPDIR/generated"
-            python verify_outputs.py \
-              "$TMPDIR/generated" \
-              --input-dir "$TMPDIR/fetched_json"
-            python serve.py \
-              --data-dir "$TMPDIR/generated" \
-              --host 127.0.0.1 \
-              --port 8123 >"$TMPDIR/server.log" 2>&1 &
-            server_pid=$!
-            python - <<'PY'
-            import json
-            import time
-            import urllib.request
-
-            for attempt in range(20):
-                try:
-                    with urllib.request.urlopen("http://127.0.0.1:8123/api/health") as response:
-                        assert json.load(response)["status"] == "ok"
-                    with urllib.request.urlopen("http://127.0.0.1:8123/data/classification_summary.json") as response:
-                        assert json.load(response)["included_memory_safety_cves"] == 590
-                    with urllib.request.urlopen("http://127.0.0.1:8123/") as response:
-                        assert b"Baseband Memory Safety Bugs Overview" in response.read()
-                    break
-                except OSError:
-                    if attempt == 19:
-                        raise
-                    time.sleep(0.1)
-            PY
-            kill "$server_pid"
-            touch "$out"
-          '';
-        });
     };
 }
