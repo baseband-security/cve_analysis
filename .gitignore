@@ -2,11 +2,9 @@
 .direnv/
 .cache/
 __pycache__/
-fetched_json/
-outputs/
 regenerated/
 result
 result-*
-
+t.tex
 # Paper source is maintained by the surrounding manuscript repository.
 cem_baseband_paper.tex

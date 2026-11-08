@@ -1,0 +1,239 @@
+{
+  "schema_version": "3.1",
+  "source_audit_date": "2026-08-27",
+  "input_unique_cves": 622,
+  "included_memory_safety_cves": 447,
+  "excluded_non_memory_or_insufficient_evidence": 175,
+  "impact": {
+    "RCE": 11,
+    "Write Primitive": 170,
+    "DoS": 266
+  },
+  "primary_scope": {
+    "Cellular Control Plane": 160,
+    "IMS/Telephony": 73,
+    "SIM/UICC": 12,
+    "IP/User Plane": 31,
+    "Local/IPC & Diagnostic": 21,
+    "Unknown": 150
+  },
+  "vendor": {
+    "Apple": 2,
+    "MediaTek": 72,
+    "Qualcomm": 254,
+    "Samsung": 79,
+    "Unisoc": 40
+  },
+  "year": {
+    "2010": 1,
+    "2017": 22,
+    "2018": 17,
+    "2019": 11,
+    "2020": 36,
+    "2021": 52,
+    "2022": 58,
+    "2023": 98,
+    "2024": 49,
+    "2025": 54,
+    "2026": 49
+  },
+  "rat_hits": {
+    "2G": 18,
+    "3G": 15,
+    "4G/LTE": 42,
+    "5G/NR": 39
+  },
+  "bug_class": {
+    "buffer-overflow": 39,
+    "classic-buffer-overflow": 8,
+    "double-free": 3,
+    "heap-buffer-overflow": 26,
+    "invalid-free": 2,
+    "invalid-memory-access": 2,
+    "low-information-cve": 142,
+    "memory-corruption-unspecified": 26,
+    "null-pointer-dereference": 28,
+    "out-of-bounds-read": 65,
+    "out-of-bounds-write": 62,
+    "out-of-range-pointer": 7,
+    "stack-buffer-overflow": 23,
+    "uninitialized-memory-read": 3,
+    "unknown-memory-operation-rce": 1,
+    "use-after-free": 9,
+    "write-what-where": 1
+  },
+  "bug_family": {
+    "Bounds write / overflow": 159,
+    "Bounds read": 68,
+    "Null dereference": 30,
+    "Lifetime / pointer misuse": 21,
+    "Low information CVE": 169
+  },
+  "protocol_hits": {
+    "Call Control": 4,
+    "IMS/SIP": 40,
+    "IP stack": 24,
+    "MAC": 4,
+    "MM": 12,
+    "NAS": 33,
+    "PDCP": 5,
+    "RLC": 8,
+    "RRC": 19,
+    "RRM": 4,
+    "SDP": 20,
+    "SIM/UICC": 12,
+    "SM": 5,
+    "SMS": 11
+  },
+  "reachability": {
+    "Cellular OTA, registered/connected": 1,
+    "Cellular OTA, unauthenticated 2G L2": 1,
+    "Cellular OTA, unauthenticated 2G L2, chained with CVE-2023-41111": 1,
+    "Cellular OTA/network, state unknown": 119,
+    "IMS/telephony, state partly unknown": 66,
+    "IP/user plane via cellular base station, attacker/state unknown": 31,
+    "Internet-to-baseband, phone number only, no interaction": 4,
+    "Local/intra-device": 21,
+    "Remote modem via cellular base station, no interaction, state unknown": 9,
+    "Rogue base station, 2G GPRS PNCD, no user interaction": 1,
+    "Rogue base station, 2G OTA, call-control state": 1,
+    "Rogue base station, 2G OTA, no user interaction": 1,
+    "Rogue base station, pre-auth GSM": 1,
+    "Rogue base station, state unspecified": 37,
+    "SIM/UICC or physical-card path": 12,
+    "Unknown": 141
+  },
+  "evidence_band": {
+    "advisory-only": 265,
+    "technical-characterization": 171,
+    "exploitation-evidence": 11
+  },
+  "source_type_hits": {
+    "research": 34,
+    "vendor-advisory": 1,
+    "vulnerability-database": 447
+  },
+  "scope_assignment_basis": {
+    "manual_annotation_plus_description": 61,
+    "description_keyword_inference": 237,
+    "unknown": 149
+  },
+  "memory_safety_basis": {
+    "explicit_public_memory_safety_evidence": 304,
+    "low_information_cve": 143
+  },
+  "coverage": {
+    "known_primary_scope": {
+      "count": 297,
+      "percent": 66.4
+    },
+    "specific_protocol": {
+      "count": 173,
+      "percent": 38.7
+    },
+    "specific_bug_class": {
+      "count": 278,
+      "percent": 62.2
+    },
+    "explicit_public_memory_safety_evidence": {
+      "count": 304,
+      "percent": 68.0
+    },
+    "low_information_cve": {
+      "count": 143,
+      "percent": 32.0
+    },
+    "source_beyond_vendor_advisory": {
+      "count": 33,
+      "percent": 7.4
+    },
+    "public_reproduced_failure": {
+      "count": 20,
+      "percent": 4.5
+    },
+    "public_primitive_characterization": {
+      "count": 21,
+      "percent": 4.7
+    },
+    "public_control_flow_or_code_execution": {
+      "count": 11,
+      "percent": 2.5
+    },
+    "patch_identifier": {
+      "count": 68,
+      "percent": 15.2
+    },
+    "affected_or_fixed_firmware_range": {
+      "count": 186,
+      "percent": 41.6
+    },
+    "public_patch_diff": {
+      "count": 0,
+      "percent": 0.0
+    }
+  },
+  "year_by_impact": {
+    "2010": {
+      "RCE": 1
+    },
+    "2017": {
+      "Write Primitive": 10,
+      "DoS": 12
+    },
+    "2018": {
+      "Write Primitive": 9,
+      "DoS": 8
+    },
+    "2019": {
+      "Write Primitive": 6,
+      "DoS": 5
+    },
+    "2020": {
+      "RCE": 1,
+      "Write Primitive": 19,
+      "DoS": 16
+    },
+    "2021": {
+      "Write Primitive": 24,
+      "DoS": 28
+    },
+    "2022": {
+      "RCE": 2,
+      "Write Primitive": 15,
+      "DoS": 41
+    },
+    "2023": {
+      "RCE": 6,
+      "Write Primitive": 33,
+      "DoS": 59
+    },
+    "2024": {
+      "RCE": 1,
+      "Write Primitive": 23,
+      "DoS": 25
+    },
+    "2025": {
+      "Write Primitive": 17,
+      "DoS": 37
+    },
+    "2026": {
+      "Write Primitive": 14,
+      "DoS": 35
+    }
+  },
+  "taxonomy_notes": {
+    "RCE": "Requires public confirmation of compromise or demonstrated control-flow/code execution.",
+    "Write Primitive": "Attacker-influenced input causes a write-capable memory effect. Absolute address/value control is not required: a deterministic single-byte or null-byte overwrite qualifies even when the immediate observed outcome is an assertion or baseband crash. This class does not assert code execution.",
+    "DoS": "Explicit read/crash memory-safety class or low-information CVE without public write-capable corruption.",
+    "Low information CVE": "No read/write/lifetime primitive is public. This family includes both records with only generic memory-corruption wording and records retained under the low-information policy. Impact remains independent: an otherwise confirmed RCE stays RCE; other unknown-primitive cases receive conservative DoS.",
+    "evidence_bands": {
+      "advisory-only": "A vendor or CVE record states the weakness or potential outcome, without deeper public technical analysis.",
+      "technical-characterization": "Public evidence reproduces the failure, identifies a detailed root cause, or characterizes an attacker-relevant memory primitive.",
+      "exploitation-evidence": "Public evidence demonstrates control-flow redirection or explicitly confirms arbitrary code execution under stated attack conditions."
+    },
+    "evidence_independence": "Evidence depth measures information completeness, not impact or criticality.",
+    "scope": "Primary attack surface is separate from multi-valued RAT and protocol annotations; Multi-RAT is not a catch-all scope.",
+    "scope_comparison": "Counts measure disclosures in this corpus, not per-device or per-line-of-code vulnerability rates.",
+    "missing_memory_evidence": "If a record is not explicitly non-memory and no public memory-safety root cause exists, retain it in the Low information CVE family. Use conservative DoS unless independent public evidence confirms RCE."
+  }
+}

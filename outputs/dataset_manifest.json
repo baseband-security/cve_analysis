@@ -1,0 +1,60 @@
+{
+  "schema_version": "3.1",
+  "analysis_release": "evidence-aware-taxonomy-v3.1",
+  "source_audit_date": "2026-08-27",
+  "description": "Low-information-inclusive, evidence-aware baseband memory-safety CVE dataset.",
+  "implementation": {
+    "enrich.py": {
+      "sha256": "e9c4b09e5fe0bd07fe3778cbf103a17b74ac9b76dd22d6acebd653c7e10a6b84"
+    },
+    "policy": "Deterministic local classification, explicit missing-evidence memory-bug assumption, identifier-specific manual exclusions and canonical links, and curated public-source decisions."
+  },
+  "inputs": {
+    "fetched_json/cve_qualcomm_clean.json": {
+      "sha256": "254c1997ef03819386c7267c8cd030070490cad6ab57a3efbc682b6b371734d0"
+    },
+    "fetched_json/cve_samsung_clean.json": {
+      "sha256": "72b3903e50d9554f98198461400726d68e1dacdb95700bcacd6f700c11226330"
+    },
+    "fetched_json/cve_mediatek_clean.json": {
+      "sha256": "d175c700d29a539c799628e503d9a8b1f106afbe70d26291de9b1786cc2b7b96"
+    },
+    "fetched_json/cve_unisoc_clean.json": {
+      "sha256": "64ecd6f8ab8b0b20867ccfaabb93b5a83624d4863b244564f85e5473396f5835"
+    },
+    "cve_table.typ": {
+      "sha256": "9dad755eee7b9fdb98399794b38b525e2d25450327f74b446b1fdf83f637f3a8"
+    }
+  },
+  "counts": {
+    "input_unique_cves": 622,
+    "included_memory_safety_cves": 447,
+    "excluded": 175
+  },
+  "impact_policy": {
+    "RCE": "Requires public confirmation of compromise or demonstrated control-flow/code execution.",
+    "Write Primitive": "Attacker-influenced input causes a write-capable memory effect. Absolute address/value control is not required: a deterministic single-byte or null-byte overwrite qualifies even when the immediate observed outcome is an assertion or baseband crash. This class does not assert code execution.",
+    "DoS": "Explicit read/crash memory-safety class or low-information CVE without public write-capable corruption.",
+    "Low information CVE": "No read/write/lifetime primitive is public. This family includes both records with only generic memory-corruption wording and records retained under the low-information policy. Impact remains independent: an otherwise confirmed RCE stays RCE; other unknown-primitive cases receive conservative DoS.",
+    "evidence_bands": {
+      "advisory-only": "A vendor or CVE record states the weakness or potential outcome, without deeper public technical analysis.",
+      "technical-characterization": "Public evidence reproduces the failure, identifies a detailed root cause, or characterizes an attacker-relevant memory primitive.",
+      "exploitation-evidence": "Public evidence demonstrates control-flow redirection or explicitly confirms arbitrary code execution under stated attack conditions."
+    },
+    "evidence_independence": "Evidence depth measures information completeness, not impact or criticality.",
+    "scope": "Primary attack surface is separate from multi-valued RAT and protocol annotations; Multi-RAT is not a catch-all scope.",
+    "scope_comparison": "Counts measure disclosures in this corpus, not per-device or per-line-of-code vulnerability rates.",
+    "missing_memory_evidence": "If a record is not explicitly non-memory and no public memory-safety root cause exists, retain it in the Low information CVE family. Use conservative DoS unless independent public evidence confirms RCE."
+  },
+  "validation": {
+    "all_checks_passed": true,
+    "unique_ids": true,
+    "included_excluded_disjoint": true,
+    "manual_blacklist_excluded": true,
+    "low_information_cves_receive_conservative_dos": true,
+    "retained_rces_equal_curated_verified_set": true,
+    "all_retained_rces_have_research_sources": true,
+    "all_records_have_identifier_specific_canonical_sources": true,
+    "inherited_input_urls_are_not_used_as_evidence": true
+  }
+}
